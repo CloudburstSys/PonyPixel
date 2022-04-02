@@ -315,13 +315,16 @@ def trigger():
 		
     new_origin = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/origin.txt').read().decode("utf-8").split(',')
     origin = (int(new_origin[0]), int(new_origin[1]))
-    size = (int(new_origin[2]), int(new_origin[2]))
+    size = (int(new_origin[2]), int(new_origin[3]))
 
     return (img, origin, size)
 
   (img, origin, size) = getData()
   (ox, oy) = origin
   (sx, sy) = size
+
+  print(origin)
+  print(size)
 
   totalPixels = sx*sy
   correctPixels = 0
@@ -349,7 +352,7 @@ def trigger():
   (x,y,current,expected) = random.choice(wrongPixelsArray)	
   print("Fixing pixel at ({},{})... Replacing with {}".format(x,y,color_text_map[expected]))
   timestampOfSafePlace = place.place_tile(x,y,expected) + random.randint(5,30)
-  print("Done. Can next place at {} seconds from now".format(timestampOfSafePlace - time.now()))
+  print("Done. Can next place at {} seconds from now".format(timestampOfSafePlace - time.time()))
 
   return timestampOfSafePlace
 
