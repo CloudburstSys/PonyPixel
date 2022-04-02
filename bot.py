@@ -323,9 +323,6 @@ def trigger():
   (ox, oy) = origin
   (sx, sy) = size
 
-  print(origin)
-  print(size)
-
   totalPixels = sx*sy
   correctPixels = 0
   wrongPixels = 0
