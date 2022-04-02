@@ -308,6 +308,8 @@ color_text_map = {
 
 place = Placer()
 
+version = "0.0.1"
+
 def trigger():
   pix2 = Image.open(place.get_board()).convert("RGBA").load()
 
@@ -329,9 +331,20 @@ def trigger():
     origin = (int(new_origin[0]), int(new_origin[1]))
     size = (int(new_origin[2]), int(new_origin[3]))
 
+    ver = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/canvas.png').read()
+    if(ver != version):
+      print("VERSION OUT OF DATE!")
+      print("PLEASE RUN 'git pull https://github.com/CloudburstSys/PonyPixel.git' TO UPDATE")
+      
+      return (None, (None, None), (None, None))
+
     return (img, origin, size)
 
   (img, origin, size) = getData()
+  
+  if(img == None):
+    return
+
   (ox, oy) = origin
   (sx, sy) = size
 
