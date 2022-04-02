@@ -356,20 +356,25 @@ def trigger():
       correctPixels += 1
     elif(rgb_to_hex(img[x-ox, y-oy]) == "#00000000"):
       # Blank pixel. we ignore it
-      correctPixels += 1
+      totalPixels = totalPixels - 1
     else:
       #print("Pixel at ({},{}) damaged: Expected: {}, got {}".format(x,y, color_text_map[color_map[rgb_to_hex(closest_color(img[x-ox, y-oy],rgb_colors_array))]], color_text_map[color_map[rgb_to_hex(closest_color(pix2[x, y], rgb_colors_array))]]))
       wrongPixels += 1
       wrongPixelsArray.append((x,y,rgb_to_hex(closest_color(img[x-ox, y-oy],rgb_colors_array))))
 
-  print("{}% correct, {} wrong pixels".format(math.floor((correctPixels/totalPixels)*100),wrongPixels))
+  print("{}% correct ({} out of {}), {} wrong pixels".format(math.floor((correctPixels/totalPixels)*100),correctPixels,totalPixels,wrongPixels))
 
-  (x,y,expected) = random.choice(wrongPixelsArray)	
-  print("Fixing pixel at ({},{})... Replacing with {}".format(x,y,expected))
-  timestampOfSafePlace = place.place_tile(x,y,color_map[expected]) + random.randint(5,30)
-  print("Done. Can next place at {} seconds from now".format(timestampOfSafePlace - time.time()))
+  if(len(wrongPixelsArray) == 0):
+    print("nothing to do!")
 
-  return timestampOfSafePlace
+    return time.time() + random.randint(5,30)
+  else:
+    (x,y,expected) = random.choice(wrongPixelsArray)	
+    print("Fixing pixel at ({},{})... Replacing with {}".format(x,y,expected))
+    timestampOfSafePlace = place.place_tile(x,y,color_map[expected]) + random.randint(5,30)
+    print("Done. Can next place at {} seconds from now".format(timestampOfSafePlace - time.time()))
+
+    return timestampOfSafePlace
 
 timestampOfPlaceAttempt = 0
 
