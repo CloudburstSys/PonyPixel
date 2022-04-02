@@ -333,8 +333,6 @@ def trigger():
 
     ver = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/version.txt').read().decode("utf-8")
     if(ver != version):
-      print(version)
-      print(ver)
       print("VERSION OUT OF DATE!")
       print("PLEASE RUN 'git pull https://github.com/CloudburstSys/PonyPixel.git' TO UPDATE")
       
