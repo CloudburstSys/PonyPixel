@@ -257,17 +257,25 @@ class Placer:
 
 
 color_map = {
+    "#BE0039FF": 1, 
     "#FF4500FF": 2,  # bright red
     "#FFA800FF": 3,  # orange
     "#FFD635FF": 4,  # yellow
     "#00A368FF": 6,  # darker green
+    "#00CC78FF": 7,
     "#7EED56FF": 8,  # lighter green
+    "#00756FFF": 9,
+    "#009EAAFF": 10,
     "#2450A4FF": 12,  # darkest blue
     "#3690EAFF": 13,  # medium normal blue
     "#51E9F4FF": 14,  # cyan
+    "#493AC1FF": 15,
+    "#6A5CFFFF": 16,
     "#811E9FFF": 18,  # darkest purple
     "#B44AC0FF": 19,  # normal purple
+    "#FF3881FF": 22,
     "#FF99AAFF": 23,  # pink
+    "#6D482FFF": 24,
     "#9C6926FF": 25,  # brown
     "#000000FF": 27,  # black
     "#898D90FF": 29,  # grey
@@ -287,28 +295,9 @@ def init_rgb_colors_array():
 
 init_rgb_colors_array()
 
-color_text_map = {
-    2: "Bright Red",
-    3: "Orange",
-    4: "Yellow",
-    6: "Dark Green",
-    8: "Light Green",
-    12: "Dark Blue",
-    13: "Blue",
-    14: "Cyan",
-    18: "Dark Purple",
-    19: "Purple",
-    23: "Pink",
-    25: "Brown",
-    27: "Black",
-    29: "Gray",
-    30: "Light Gray",
-    31: "White"
-}
-
 place = Placer()
 
-version = "0.1.0"
+version = "0.2.0"
 
 def trigger():
   pix2 = Image.open(place.get_board()).convert("RGBA").load()
@@ -369,12 +358,12 @@ def trigger():
     else:
       #print("Pixel at ({},{}) damaged: Expected: {}, got {}".format(x,y, color_text_map[color_map[rgb_to_hex(closest_color(img[x-ox, y-oy],rgb_colors_array))]], color_text_map[color_map[rgb_to_hex(closest_color(pix2[x, y], rgb_colors_array))]]))
       wrongPixels += 1
-      wrongPixelsArray.append((x,y,color_map[rgb_to_hex(closest_color(pix2[x, y], rgb_colors_array))], color_map[rgb_to_hex(closest_color(img[x-ox, y-oy],rgb_colors_array))]))
+      wrongPixelsArray.append((x,y,rgb_to_hex(closest_color(img[x-ox, y-oy],rgb_colors_array))))
 
   print("{}% correct, {} wrong pixels".format(math.floor((correctPixels/totalPixels)*100),wrongPixels))
 
-  (x,y,current,expected) = random.choice(wrongPixelsArray)	
-  print("Fixing pixel at ({},{})... Replacing with {}".format(x,y,color_text_map[expected]))
+  (x,y,expected) = random.choice(wrongPixelsArray)	
+  print("Fixing pixel at ({},{})... Replacing with {}".format(x,y,expected))
   timestampOfSafePlace = place.place_tile(x,y,expected) + random.randint(5,30)
   print("Done. Can next place at {} seconds from now".format(timestampOfSafePlace - time.time()))
 
