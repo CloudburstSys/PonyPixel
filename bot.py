@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import math
 from enum import Enum
 import time
@@ -6,14 +8,24 @@ import json
 import requests
 from bs4 import BeautifulSoup
 
-import botConfig
-
 import urllib
 from io import BytesIO
 from websocket import create_connection
 from PIL import ImageColor
 from PIL import Image
 import random
+
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("username", nargs="?")
+parser.add_argument("password", nargs="?")
+args = parser.parse_args()
+if args.username is None or args.password is None:
+  import botConfig
+else:
+  botConfig = args
+
 
 SET_PIXEL_QUERY = \
 """mutation setPixel($input: ActInput!) {
