@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 import urllib
 from io import BytesIO
 from websocket import create_connection
+from websocket import WebSocketConnectionClosedException
 from PIL import ImageColor
 from PIL import Image
 import random
