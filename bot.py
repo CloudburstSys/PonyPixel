@@ -308,7 +308,7 @@ color_text_map = {
 
 place = Placer()
 
-version = "0.0.1"
+version = "0.1.0"
 
 def trigger():
   pix2 = Image.open(place.get_board()).convert("RGBA").load()
