@@ -322,8 +322,6 @@ def trigger():
 
     ver = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/version.txt').read().decode("utf-8").replace("\n", "")
     if(ver != version):
-      print(ver)
-      print(version)
       print("VERSION OUT OF DATE!")
       print("PLEASE RUN 'git pull https://github.com/CloudburstSys/PonyPixel.git' TO UPDATE")
       
@@ -364,7 +362,7 @@ def trigger():
 
   (x,y,expected) = random.choice(wrongPixelsArray)	
   print("Fixing pixel at ({},{})... Replacing with {}".format(x,y,expected))
-  timestampOfSafePlace = place.place_tile(x,y,expected) + random.randint(5,30)
+  timestampOfSafePlace = place.place_tile(x,y,color_map[expected]) + random.randint(5,30)
   print("Done. Can next place at {} seconds from now".format(timestampOfSafePlace - time.time()))
 
   return timestampOfSafePlace
