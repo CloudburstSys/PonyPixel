@@ -145,7 +145,7 @@ class Placer:
 
     def get_board(self):
         print("Getting board")
-        ws = create_connection("wss://gql-realtime-2.reddit.com/query")
+        ws = create_connection("wss://gql-realtime-2.reddit.com/query", origin="https://hot-potato.reddit.com")
         ws.send(
             json.dumps({
                 "type": "connection_init",
