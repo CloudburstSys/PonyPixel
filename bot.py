@@ -245,9 +245,12 @@ class Placer:
                           headers=headers)
 
         if r.json()["data"] == None:
-            waitTime = math.floor(
-                r.json()["errors"][0]["extensions"]["nextAvailablePixelTs"])
-            print("placing failed: rate limited")
+            try:
+              waitTime = math.floor(
+                  r.json()["errors"][0]["extensions"]["nextAvailablePixelTs"])
+              print("placing failed: rate limited")
+            except:
+              waitTime = 10000
         else:
             waitTime = math.floor(r.json()["data"]["act"]["data"][0]["data"]
                                   ["nextAvailablePixelTimestamp"])
@@ -376,6 +379,11 @@ while True:
     time.sleep(5)
     continue
 
-  timestampOfPlaceAttempt = trigger()
+  try: 
+    timestampOfPlaceAttempt = trigger()
+  except WebSocketConnectionClosedException:
+    print("Lost connection to websocket, Will reattempt shortly.")
+  except:
+    print("????????")
 
   time.sleep(5)
