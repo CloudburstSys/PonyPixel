@@ -331,7 +331,7 @@ def trigger():
     origin = (int(new_origin[0]), int(new_origin[1]))
     size = (int(new_origin[2]), int(new_origin[3]))
 
-    ver = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/canvas.png').read()
+    ver = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/version.txt').read()
     if(ver != version):
       print("VERSION OUT OF DATE!")
       print("PLEASE RUN 'git pull https://github.com/CloudburstSys/PonyPixel.git' TO UPDATE")
