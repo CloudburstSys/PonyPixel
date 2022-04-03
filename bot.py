@@ -403,8 +403,8 @@ while True:
 
       quit()
   except WebSocketConnectionClosedException:
-    print("Lost connection to websocket, Will reattempt shortly.")
-    time.sleep(10)
+    print("WebSocket is in fail state. Please reboot.")
+    quit()
   except:
     print("????????")
 
