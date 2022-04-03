@@ -185,7 +185,7 @@ class Placer:
                             "channel": {
                                 "teamOwner": "AFD2022",
                                 "category": "CANVAS",
-                                "tag": canvas,
+                                "tag": str(canvas),
                             }
                         }
                     },
@@ -301,7 +301,7 @@ init_rgb_colors_array()
 
 place = Placer()
 
-version = "0.3.1"
+version = "0.3.2"
 
 def trigger():
   # Behold, the dirtiest code I ever wrote
@@ -315,12 +315,16 @@ def trigger():
     im = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/canvas.png').read()
     img = Image.open(BytesIO(im)).convert("RGBA").load()
 		
-    new_origin = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/origin.txt').read().decode("utf-8").split(',')
+    new_origin = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/origin.txt').read().decode("utf-8").replace("\n", "").split(',')
     origin = (int(new_origin[0]), int(new_origin[1]))
     size = (int(new_origin[2]), int(new_origin[3]))
     canvas = int(new_origin[4])
 
     ver = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/version.txt').read().decode("utf-8").replace("\n", "")
+
+    print("LOCAL VERSION: {}".format(version))
+    print("UPSTREAM VERSION: {}".format(ver))
+
     if(ver != version):
       print("VERSION OUT OF DATE!")
       print("PLEASE RUN 'git pull https://github.com/CloudburstSys/PonyPixel.git' TO UPDATE")
