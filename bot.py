@@ -418,7 +418,7 @@ while True:
     print("\aWebSocket connection refused. Auth issue. Reloading...")
     os.execv(sys.argv[0], sys.argv)
     exit(2)
-  except:
-    print("????????")
+  except Exception:
+    print("wtfff????? idk what's going on im dumb probably")
 
   time.sleep(5)
