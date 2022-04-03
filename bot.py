@@ -143,7 +143,7 @@ class Placer:
         data = json.loads(data_str)
         self.token = data["user"]["session"]["accessToken"]
 
-    def get_board(self):
+    def get_board(self, canvas):
         print("Getting board")
         ws = create_connection("wss://gql-realtime-2.reddit.com/query", origin="https://hot-potato.reddit.com")
         ws.send(
@@ -185,7 +185,7 @@ class Placer:
                             "channel": {
                                 "teamOwner": "AFD2022",
                                 "category": "CANVAS",
-                                "tag": "0",
+                                "tag": canvas,
                             }
                         }
                     },
@@ -213,7 +213,7 @@ class Placer:
 
         return boardimg
 
-    def place_tile(self, x: int, y: int, color: int):
+    def place_tile(self, canvas: int, x: int, y: int, color: int):
         headers = self.INITIAL_HEADERS.copy()
         headers.update({
             "apollographql-client-name": "mona-lisa",
@@ -232,7 +232,7 @@ class Placer:
                               "variables": {
                                   "input": {
                                       "PixelMessageData": {
-                                          "canvasIndex": 0,
+                                          "canvasIndex": canvas,
                                           "colorIndex": color,
                                           "coordinate": {
                                               "x": x,
@@ -301,14 +301,10 @@ init_rgb_colors_array()
 
 place = Placer()
 
-version = "0.2.0"
+version = "0.3
+.0"
 
 def trigger():
-  pix2 = Image.open(place.get_board()).convert("RGBA").load()
-
-  rows = []
-  thisRow = []
-
   # Behold, the dirtiest code I ever wrote
   # This hacky hack serves as a bridge for urllib in Python 2 and Python 3
   try:
@@ -323,23 +319,29 @@ def trigger():
     new_origin = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/origin.txt').read().decode("utf-8").split(',')
     origin = (int(new_origin[0]), int(new_origin[1]))
     size = (int(new_origin[2]), int(new_origin[3]))
+    canvas = int(new_origin[4])
 
     ver = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/version.txt').read().decode("utf-8").replace("\n", "")
     if(ver != version):
       print("VERSION OUT OF DATE!")
       print("PLEASE RUN 'git pull https://github.com/CloudburstSys/PonyPixel.git' TO UPDATE")
       
-      return (None, (None, None), (None, None))
+      return (None, (None, None), (None, None), None)
 
-    return (img, origin, size)
+    return (img, origin, size, canvas)
 
-  (img, origin, size) = getData()
+  (img, origin, size, canvas) = getData()
   
   if(img == None):
     return
 
   (ox, oy) = origin
   (sx, sy) = size
+
+  pix2 = Image.open(place.get_board(canvas)).convert("RGBA").load()
+
+  rows = []
+  thisRow = []
 
   totalPixels = sx*sy
   correctPixels = 0
@@ -371,7 +373,7 @@ def trigger():
   else:
     (x,y,expected) = random.choice(wrongPixelsArray)	
     print("Fixing pixel at ({},{})... Replacing with {}".format(x,y,expected))
-    timestampOfSafePlace = place.place_tile(x,y,color_map[expected]) + random.randint(5,30)
+    timestampOfSafePlace = place.place_tile(int(canvas),x,y,color_map[expected]) + random.randint(5,30)
     print("Done. Can next place at {} seconds from now".format(timestampOfSafePlace - time.time()))
 
     return timestampOfSafePlace
