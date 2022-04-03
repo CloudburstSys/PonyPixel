@@ -407,7 +407,7 @@ while True:
   except WebSocketConnectionClosedException:
     print("WebSocket connection refused. Auth issue. Reload.")
     os.execv(sys.argv[0], sys.argv)
-    exit()
+    exit(1)
   except:
     print("????????")
 
