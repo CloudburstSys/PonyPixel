@@ -345,6 +345,7 @@ def trigger():
   (img, origin, size, canvas) = getData()
   
   if(img == None):
+    exit()
     return
 
   (ox, oy) = origin
