@@ -329,7 +329,7 @@ def trigger():
     size = (int(new_origin[2]), int(new_origin[3]))
     canvas = int(new_origin[4])
 
-    ver = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/version.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "")
+    ver = urllib.urlopen('https://CloudburstSys.github.io/place.conep.one/version.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "")
 
     print("LOCAL VERSION: {}".format(version))
     print("UPSTREAM VERSION: {}".format(ver))
