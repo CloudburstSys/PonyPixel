@@ -375,7 +375,8 @@ def trigger():
     return time.time() + random.randint(5,30)
   else:
     (x,y,expected) = random.choice(wrongPixelsArray)	
-    print("Fixing pixel at ({},{})... Replacing with {}".format(x,y,expected))
+
+    print("Fixing pixel at ({},{}) on canvas id {}... Replacing with {}".format(x,y,canvas,expected))
     timestampOfSafePlace = place.place_tile(int(canvas),x,y,color_map[expected]) + random.randint(5,30)
     print("Done. Can next place at {} seconds from now".format(timestampOfSafePlace - time.time()))
 
@@ -394,6 +395,7 @@ while True:
     timestampOfPlaceAttempt = trigger()
   except WebSocketConnectionClosedException:
     print("Lost connection to websocket, Will reattempt shortly.")
+    time.sleep(10)
   except:
     print("????????")
 
