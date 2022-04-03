@@ -301,8 +301,7 @@ init_rgb_colors_array()
 
 place = Placer()
 
-version = "0.3
-.0"
+version = "0.3.1"
 
 def trigger():
   # Behold, the dirtiest code I ever wrote
