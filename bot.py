@@ -402,12 +402,11 @@ while True:
       print("-------------------------------")
       print("BOT BANNED FROM R/PLACE")
       print("Please generate a new account and rerun.")
-
-      quit()
+      exit(1)
   except WebSocketConnectionClosedException:
     print("WebSocket connection refused. Auth issue. Reload.")
     os.execv(sys.argv[0], sys.argv)
-    exit(1)
+    exit(2)
   except:
     print("????????")
 
