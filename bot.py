@@ -5,6 +5,8 @@ from enum import Enum
 import time
 import json
 
+import os
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -265,23 +267,30 @@ color_map = {
     "#FF4500FF": 2,  # bright red
     "#FFA800FF": 3,  # orange
     "#FFD635FF": 4,  # yellow
+    "#FFF8B8FF": 5,
     "#00A368FF": 6,  # darker green
     "#00CC78FF": 7,
     "#7EED56FF": 8,  # lighter green
     "#00756FFF": 9,
     "#009EAAFF": 10,
+    "#00CCC0FF": 11,
     "#2450A4FF": 12,  # darkest blue
     "#3690EAFF": 13,  # medium normal blue
     "#51E9F4FF": 14,  # cyan
     "#493AC1FF": 15,
     "#6A5CFFFF": 16,
+    "#94B3FFFF": 17,
     "#811E9FFF": 18,  # darkest purple
     "#B44AC0FF": 19,  # normal purple
+    "#E4ABFFFF": 20,
+    "#DE107FFF": 21,
     "#FF3881FF": 22,
     "#FF99AAFF": 23,  # pink
     "#6D482FFF": 24,
     "#9C6926FF": 25,  # brown
+    "#FFB470FF": 26,
     "#000000FF": 27,  # black
+    "#515252FF": 28,
     "#898D90FF": 29,  # grey
     "#D4D7D9FF": 30,  # light grey
     "#FFFFFFFF": 31,  # white
@@ -301,7 +310,7 @@ init_rgb_colors_array()
 
 place = Placer()
 
-version = "0.3.2"
+version = "0.4.0"
 
 def trigger():
   # Behold, the dirtiest code I ever wrote
@@ -403,9 +412,9 @@ while True:
       print("BOT BANNED FROM R/PLACE")
       print("Please generate a new account and rerun.")
 
-      quit()
+      exit()
   except WebSocketConnectionClosedException:
-    print("WebSocket connection refused. Auth issue. Reload.")
+    print("WebSocket connection refused. Auth issue. Reloading...")
     os.execv(sys.argv[0], sys.argv)
     exit()
   except:
