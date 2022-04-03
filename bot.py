@@ -407,17 +407,17 @@ while True:
     timestampOfPlaceAttempt = trigger()
 
     if((timestampOfPlaceAttempt - time.time()) > 86400):
-      print(" ")
+      # Play a bell to alert the user with "\a". When using a terminal multiplexer such as tmux, the user can be alerted about the status of the bot. This is also useful when using a terminal emulator.
+      print("\a ")
       print(" ")
       print("-------------------------------")
       print("BOT BANNED FROM R/PLACE")
       print("Please generate a new account and rerun.")
-
-      exit()
+      exit(1)
   except WebSocketConnectionClosedException:
-    print("WebSocket connection refused. Auth issue. Reloading...")
+    print("\aWebSocket connection refused. Auth issue. Reloading...")
     os.execv(sys.argv[0], sys.argv)
-    exit()
+    exit(2)
   except:
     print("????????")
 
