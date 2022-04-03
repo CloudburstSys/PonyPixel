@@ -321,15 +321,15 @@ def trigger():
     urllib.urlopen = urllib.request.urlopen
 
   def getData():
-    im = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/canvas.png').read()
+    im = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/canvas.png?t={}'.format(time.time())).read()
     img = Image.open(BytesIO(im)).convert("RGBA").load()
 		
-    new_origin = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/origin.txt').read().decode("utf-8").replace("\n", "").split(',')
+    new_origin = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/origin.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "").split(',')
     origin = (int(new_origin[0]), int(new_origin[1]))
     size = (int(new_origin[2]), int(new_origin[3]))
     canvas = int(new_origin[4])
 
-    ver = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/version.txt').read().decode("utf-8").replace("\n", "")
+    ver = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/version.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "")
 
     print("LOCAL VERSION: {}".format(version))
     print("UPSTREAM VERSION: {}".format(ver))
