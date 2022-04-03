@@ -310,7 +310,7 @@ init_rgb_colors_array()
 
 place = Placer()
 
-version = "0.4.0"
+version = "0.4.2"
 
 def trigger():
   # Behold, the dirtiest code I ever wrote
@@ -321,10 +321,10 @@ def trigger():
     urllib.urlopen = urllib.request.urlopen
 
   def getData():
-    im = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/canvas.png?t={}'.format(time.time())).read()
+    im = urllib.urlopen('https://CloudburstSys.github.io/place.conep.one/canvas.png?t={}'.format(time.time())).read()
     img = Image.open(BytesIO(im)).convert("RGBA").load()
 		
-    new_origin = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/origin.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "").split(',')
+    new_origin = urllib.urlopen('https://CloudburstSys.github.io/place.conep.one/origin.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "").split(',')
     origin = (int(new_origin[0]), int(new_origin[1]))
     size = (int(new_origin[2]), int(new_origin[3]))
     canvas = int(new_origin[4])
