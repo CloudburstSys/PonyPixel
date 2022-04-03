@@ -312,15 +312,15 @@ def trigger():
     urllib.urlopen = urllib.request.urlopen
 
   def getData():
-    im = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/canvas.png').read()
+    im = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/canvas.png').read()
     img = Image.open(BytesIO(im)).convert("RGBA").load()
 		
-    new_origin = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/origin.txt').read().decode("utf-8").replace("\n", "").split(',')
+    new_origin = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/origin.txt').read().decode("utf-8").replace("\n", "").split(',')
     origin = (int(new_origin[0]), int(new_origin[1]))
     size = (int(new_origin[2]), int(new_origin[3]))
     canvas = int(new_origin[4])
 
-    ver = urllib.urlopen('https://cloudburstsys.github.io/place.conep.one/version.txt').read().decode("utf-8").replace("\n", "")
+    ver = urllib.urlopen('https://raw.githubusercontent.com/CloudburstSys/place.conep.one/master/version.txt').read().decode("utf-8").replace("\n", "")
 
     print("LOCAL VERSION: {}".format(version))
     print("UPSTREAM VERSION: {}".format(ver))
@@ -355,11 +355,13 @@ def trigger():
   for i in range(sx*sy):
     x = (i % sx) + ox
     y = math.floor(i / sx) + oy
+
+    (red, green, blue, alpha) = img[x-ox, y-oy]
 	
     if(color_map[rgb_to_hex(closest_color(pix2[x, y], rgb_colors_array))] == color_map[rgb_to_hex(closest_color(img[x-ox, y-oy],rgb_colors_array))]):
 		  # Great! They're equal!
       correctPixels += 1
-    elif(rgb_to_hex(img[x-ox, y-oy]) == "#00000000"):
+    elif(alpha == 0):
       # Blank pixel. we ignore it
       totalPixels = totalPixels - 1
     else:
@@ -403,8 +405,9 @@ while True:
 
       quit()
   except WebSocketConnectionClosedException:
-    print("WebSocket is in fail state. Please reboot.")
-    quit()
+    print("WebSocket connection refused. Auth issue. Reload.")
+    os.execv(sys.argv[0], sys.argv)
+    exit()
   except:
     print("????????")
 
