@@ -393,6 +393,15 @@ while True:
 
   try: 
     timestampOfPlaceAttempt = trigger()
+
+    if((timestampOfPlaceAttempt - time.time()) > 86400):
+      print(" ")
+      print(" ")
+      print("-------------------------------")
+      print("BOT BANNED FROM R/PLACE")
+      print("Please generate a new account and rerun.")
+
+      quit()
   except WebSocketConnectionClosedException:
     print("Lost connection to websocket, Will reattempt shortly.")
     time.sleep(10)
