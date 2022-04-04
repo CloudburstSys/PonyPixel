@@ -741,7 +741,7 @@ if __name__ == '__main__':
             
             upstreamVersion = urllib.urlopen('https://CloudburstSys.github.io/place.conep.one/version.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "")
 
-            if(version != upstreamVersion):
+            if(VERSION != upstreamVersion):
                 # Out of date!
                 print("\a-------------------------------\nBOT IS OUT OF DATE!\nPlease repull the bot (git pull) and restart your bots.")
                 exit(3)
