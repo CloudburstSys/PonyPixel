@@ -30,7 +30,7 @@ except AttributeError as err:
 
 DAY = 86400
 HOUR = 3600
-VERSION = "0.4.2"
+VERSION = "0.5.0"
 
 CANVAS_IDS     = [   0,    1,    2,    3]
 CANVAS_XOFFSET = [   0, 1000,    0, 1000]
@@ -425,8 +425,9 @@ class Placer:
         data = json.loads(data_str)
         self.token = data["user"]["session"]["accessToken"]
     
-    def get_board(self, canvas_ids: Tuple[int]):
-        print("Getting board")
+    def get_board(self):
+        print("Getting board(s)")
+        boardimg = [None, None, None, None]
         ws = create_connection("wss://gql-realtime-2.reddit.com/query", origin="https://hot-potato.reddit.com")
         ws.send(
             json.dumps({
@@ -469,7 +470,7 @@ class Placer:
                             "channel": {
                                 "teamOwner": "AFD2022",
                                 "category" : "CANVAS",
-                                "tag"      : str(canvas_ids),
+                                "tag"      : "0",
                             }
                         }
                     },
@@ -481,19 +482,110 @@ class Placer:
                 },
             }))
         
-        while True:
+        while boardimg[0] == None:
             temp = json.loads(ws.recv())
             if temp["type"] == "data":
                 msg = temp["payload"]["data"]["subscribe"]
                 if msg["data"]["__typename"] == "FullFrameMessageData":
-                    file = msg["data"]["name"]
+                    print("Got 1st canvas: {}".format(msg["data"]["name"]))
+                    boardimg[0] = BytesIO(requests.get(msg["data"]["name"], stream=True).content)
+                    break
+
+        ws.send(
+            json.dumps({
+                "id"     : "2",
+                "type"   : "start",
+                "payload": {
+                    "variables"    : {
+                        "input": {
+                            "channel": {
+                                "teamOwner": "AFD2022",
+                                "category" : "CANVAS",
+                                "tag"      : "1",
+                            }
+                        }
+                    },
+                    "extensions"   : {},
+                    "operationName":
+                        "replace",
+                    "query"        :
+                        "subscription replace($input: SubscribeInput!) {\n  subscribe(input: $input) {\n    id\n    ... on BasicMessage {\n      data {\n        __typename\n        ... on FullFrameMessageData {\n          __typename\n          name\n          timestamp\n        }\n        ... on DiffFrameMessageData {\n          __typename\n          name\n          currentTimestamp\n          previousTimestamp\n        }\n      }\n      __typename\n    }\n    __typename\n  }\n}\n",
+                },
+            }))
+        
+        while boardimg[1] == None:
+            temp = json.loads(ws.recv())
+            if temp["type"] == "data":
+                msg = temp["payload"]["data"]["subscribe"]
+                if msg["data"]["__typename"] == "FullFrameMessageData":
+                    print("Got 2nd canvas: {}".format(msg["data"]["name"]))
+                    boardimg[1] = BytesIO(requests.get(msg["data"]["name"], stream=True).content)
+                    break
+
+        ws.send(
+            json.dumps({
+                "id"     : "2",
+                "type"   : "start",
+                "payload": {
+                    "variables"    : {
+                        "input": {
+                            "channel": {
+                                "teamOwner": "AFD2022",
+                                "category" : "CANVAS",
+                                "tag"      : "2",
+                            }
+                        }
+                    },
+                    "extensions"   : {},
+                    "operationName":
+                        "replace",
+                    "query"        :
+                        "subscription replace($input: SubscribeInput!) {\n  subscribe(input: $input) {\n    id\n    ... on BasicMessage {\n      data {\n        __typename\n        ... on FullFrameMessageData {\n          __typename\n          name\n          timestamp\n        }\n        ... on DiffFrameMessageData {\n          __typename\n          name\n          currentTimestamp\n          previousTimestamp\n        }\n      }\n      __typename\n    }\n    __typename\n  }\n}\n",
+                },
+            }))
+        
+        while boardimg[2] == None:
+            temp = json.loads(ws.recv())
+            if temp["type"] == "data":
+                msg = temp["payload"]["data"]["subscribe"]
+                if msg["data"]["__typename"] == "FullFrameMessageData":
+                    print("Got 3rd canvas: {}".format(msg["data"]["name"]))
+                    boardimg[2] = BytesIO(requests.get(msg["data"]["name"], stream=True).content)
+                    break
+
+        ws.send(
+            json.dumps({
+                "id"     : "2",
+                "type"   : "start",
+                "payload": {
+                    "variables"    : {
+                        "input": {
+                            "channel": {
+                                "teamOwner": "AFD2022",
+                                "category" : "CANVAS",
+                                "tag"      : "3",
+                            }
+                        }
+                    },
+                    "extensions"   : {},
+                    "operationName":
+                        "replace",
+                    "query"        :
+                        "subscription replace($input: SubscribeInput!) {\n  subscribe(input: $input) {\n    id\n    ... on BasicMessage {\n      data {\n        __typename\n        ... on FullFrameMessageData {\n          __typename\n          name\n          timestamp\n        }\n        ... on DiffFrameMessageData {\n          __typename\n          name\n          currentTimestamp\n          previousTimestamp\n        }\n      }\n      __typename\n    }\n    __typename\n  }\n}\n",
+                },
+            }))
+        
+        while boardimg[3] == None:
+            temp = json.loads(ws.recv())
+            if temp["type"] == "data":
+                msg = temp["payload"]["data"]["subscribe"]
+                if msg["data"]["__typename"] == "FullFrameMessageData":
+                    print("Got 4th canvas: {}".format(msg["data"]["name"]))
+                    boardimg[3] = BytesIO(requests.get(msg["data"]["name"], stream=True).content)
                     break
         
         ws.close()
-        
-        boardimg = BytesIO(requests.get(file, stream=True).content)
-        print("Got image:", file)
-        
+                
         return boardimg
     
     def place_tile(self, canvas: int, x: int, y: int, color: int):
@@ -602,13 +694,15 @@ def updateCanvasState(ids: Union[int, List[int]]):
     if type(ids) is int:
         ids = [ids]
     
+    canvases = place.get_board()
+
     # load current state of canvas
     for canvas_id in ids:
         xoffset = CANVAS_XOFFSET[canvas_id]
         yoffset = CANVAS_YOFFSET[canvas_id]
         xsize   = CANVAS_XSIZE[canvas_id]
         ysize   = CANVAS_YSIZE[canvas_id]
-        canvas = image_to_npy(Image.open(place.get_board(canvas_id)).convert("RGBA"))# raw -> intMatrix([W, H, (RGBA)])
+        canvas = image_to_npy(Image.open(canvases[canvas_id]).convert("RGBA"))# raw -> intMatrix([W, H, (RGBA)])
         currentData[xoffset:xoffset + xsize, yoffset:yoffset + ysize] = canvas
 
 
@@ -652,12 +746,12 @@ if __name__ == '__main__':
                 timestampOfPlaceAttempt = AttemptPlacement(place)
             except WebSocketConnectionClosedException:
                 print("WebSocket connection refused. Auth issue.")
-                exit()
+                exit(2)
             
             time_to_wait = timestampOfPlaceAttempt - time.time()
             if time_to_wait > DAY:
                 print("-------------------------------\nBOT BANNED FROM R/PLACE\nPlease generate a new account and rerun.")
-                quit()
+                exit(1)
             
             time.sleep(5)
         except KeyboardInterrupt:
