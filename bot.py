@@ -504,7 +504,7 @@ class Placer:
         return waitTimems / 1000
 
 
-def AbsCoordToCanvasCood(x: int, y: int):
+def AbsCoordToCanvasCoord(x: int, y: int):
     global CanvasIdMap
     if CanvasIdMap is None:
         max_x = int(max(xoffset+xsize for xoffset, xsize in zip(CANVAS_XOFFSET, CANVAS_XSIZE)))
@@ -518,7 +518,7 @@ def AbsCoordToCanvasCood(x: int, y: int):
     cy = y - CANVAS_YOFFSET[canvas_id]
     return cx, cy, canvas_id
 
-def CanvasCoodToAbsCoord(cx: int, cy: int, canvas_id: int):
+def CanvasCoordToAbsCoord(cx: int, cy: int, canvas_id: int):
     x = cx + CANVAS_XOFFSET[canvas_id]
     y = cy + CANVAS_YOFFSET[canvas_id]
     return x, y
@@ -532,13 +532,13 @@ def AttemptPlacement(place: Placer):
         x, y = selectRandomPixel(diffcords) # select random pixel?
         
         # Send request to correct pixel that doesn't match template
-        cx, cy, canvas_id = AbsCoordToCanvasCood(x, y)
-        hex = rgb_to_hex(closest_color(currentData[x, y], rgb_colors_array)) # find closest colour in colour map
-        timestampOfSafePlace = place.place_tile(int(canvas_id), cx, cy, COLOR_MAP[hex]) # and convert hex to color ID for request
+        cx, cy, canvas_id = AbsCoordToCanvasCoord(x, y)
+        hex_color = rgb_to_hex(closest_color(currentData[x, y], rgb_colors_array)) # find closest colour in colour map
+        timestampOfSafePlace = place.place_tile(int(canvas_id), cx, cy, COLOR_MAP[hex_color]) # and convert hex_color to color ID for request
         
         # add random delay after placing tile (to reduce chance of bot detection)
         timestampOfSafePlace += random.uniform(5, 30)
-        print(f"Placed Pixel '{hex}' at [{x}, {y}]. Can next place in {timestampOfSafePlace - time.time():.1f} seconds")
+        print(f"Placed Pixel '{hex_color}' at [{x}, {y}]. Can next place in {timestampOfSafePlace - time.time():.1f} seconds")
         
         return timestampOfSafePlace
     
