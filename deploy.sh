@@ -4,7 +4,6 @@ echo "Usage of PonyPixel may result in restrictions placed on your Reddit accoun
 echo "Avoid using your main Reddit account."
 echo "If you understand the risk, press enter to proceed. Ctrl+C to cancel."
 read -r temp
-echo 
 if [ "$whoami" != "root" ] ; then
     echo "You are not running as root. System dependencies will not install."
 else
