@@ -750,6 +750,8 @@ if __name__ == '__main__':
             print('KeyboardInterrupt: Exiting Application')
             break
         except Exception as err:
+            print("-------------------------------")
             print_exc() # print stack trace
+            print("-------------------------------\nNON-TERMINAL ERROR ENCOUNTERED\nBot is reviving. Please wait...")
             time.sleep(15)
             need_init = True
