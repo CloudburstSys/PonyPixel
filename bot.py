@@ -311,7 +311,7 @@ def selectRandomPixelWeighted(diff):
 # @return {{x: number, y: number}}
 #
 def selectRandomPixel(diff):
-    if rPlaceTemplate['maskUrl'] is None or rPlaceMask is None:
+    if rPlaceTemplate['maskUrl'] is None or maskData is None:
         pixel = random.choice(diff)
     else:
         pixel = selectRandomPixelWeighted(diff)
