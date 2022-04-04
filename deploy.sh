@@ -4,12 +4,25 @@ echo "Usage of PonyPixel may result in restrictions placed on your Reddit accoun
 echo "Avoid using your main Reddit account."
 echo "If you understand the risk, press enter to proceed. Ctrl+C to cancel."
 read -r temp
-if [ "$whoami" != "root" ] && [ "$TERMUX_VERSION" == "" ] ; then
+if [ "$TERMUX_VERSION" != "" ] || [ "$TERMUX_APP_PID" != "" ] || [ "$PREFIX" == "/data/data/com.termux/files/usr" ] ; then
+    echo "You are using Termux. Assuming APT and installing dependencies..."
+    echo "DO NOT USE TERMUX INSTALLED FROM GOOGLE PLAY!!!"
+    apt update
+    apt install git python3 -y
+    echo Going to /opt...
+    mkdir -p "$PREFIX/opt"
+    cd "$PREFIX/opt"
+elif [ "$(whoami)" != "root" ] ; then
     echo "You are not running as root. System dependencies will not install."
+    echo "Assuming non-root mode."
+    mkdir -p ~/ponypixel
+    cd ~/ponypixel
 else
-    echo "Testing APT (Debian and Ubuntu), DNF (Fedora/RHEL) and Pacman (Arch Linux)..."
+    echo "Testing APT (Debian/Ubuntu), DNF (Fedora/RHEL) and Pacman (Arch Linux)..."
     if [ -e "$PREFIX/bin/apt" ] ; then
-        apt install git python3 python3-pip python3-venv -y
+        apt update
+        apt install git python3 -y
+        apt install python3-pip python3-venv -y
     fi
     if [ -e "$PREFIX/bin/dnf" ] ; then
         dnf install git python3 python3-pip
@@ -19,6 +32,9 @@ else
         pacman -S python3
         pacman -S python3-pip
     fi
+    echo Going to /opt...
+    mkdir -p "$PREFIX/opt"
+    cd "$PREFIX/opt"
 fi
 echo "Activating virtual environment..."
 python3 -m venv env
