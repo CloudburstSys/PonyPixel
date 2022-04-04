@@ -425,7 +425,7 @@ class Placer:
         data = json.loads(data_str)
         self.token = data["user"]["session"]["accessToken"]
     
-    def get_board(self, canvas):
+    def get_board(self, canvas_ids: Tuple[int]):
         print("Getting board")
         ws = create_connection("wss://gql-realtime-2.reddit.com/query", origin="https://hot-potato.reddit.com")
         ws.send(
@@ -436,6 +436,7 @@ class Placer:
                 },
             }))
         ws.recv()
+        
         ws.send(
             json.dumps({
                 "id"     : "1",
@@ -457,6 +458,7 @@ class Placer:
                 },
             }))
         ws.recv()
+        
         ws.send(
             json.dumps({
                 "id"     : "2",
@@ -467,7 +469,7 @@ class Placer:
                             "channel": {
                                 "teamOwner": "AFD2022",
                                 "category" : "CANVAS",
-                                "tag"      : str(canvas),
+                                "tag"      : str(canvas_ids),
                             }
                         }
                     },
