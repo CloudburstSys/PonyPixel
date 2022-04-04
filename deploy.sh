@@ -6,6 +6,7 @@ echo "If you understand the risk, press enter to proceed. Ctrl+C to cancel."
 read -r temp
 if [ "$TERMUX_VERSION" != "" ] || [ "$TERMUX_APP_PID" != "" ] || [ "$PREFIX" == "/data/data/com.termux/files/usr" ] ; then
     echo "You are using Termux. Assuming APT and installing dependencies..."
+    echo "DO NOT USE TERMUX INSTALLED FROM GOOGLE PLAY!!!"
     apt update
     apt install git python3 -y
     echo Going to /opt...
