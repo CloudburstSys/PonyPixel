@@ -4,12 +4,13 @@ echo "Usage of PonyPixel may result in restrictions placed on your Reddit accoun
 echo "Avoid using your main Reddit account."
 echo "If you understand the risk, press enter to proceed. Ctrl+C to cancel."
 read -r temp
-if [ "$whoami" != "root" ] && [ "$TERMUX_VERSION" == "" ] ; then
+if [ "$(whoami)" != "root" ] && [ "$TERMUX_VERSION" == "" ] ; then
     echo "You are not running as root. System dependencies will not install."
 else
-    echo "Testing APT (Debian and Ubuntu), DNF (Fedora/RHEL) and Pacman (Arch Linux)..."
+    echo "Testing APT (Debian/Ubuntu/Termux), DNF (Fedora/RHEL) and Pacman (Arch Linux)..."
     if [ -e "$PREFIX/bin/apt" ] ; then
-        apt install git python3 python3-pip python3-venv -y
+        apt install git python3 -y
+        apt install python3-pip python3-venv -y
     fi
     if [ -e "$PREFIX/bin/dnf" ] ; then
         dnf install git python3 python3-pip
