@@ -4,7 +4,7 @@ echo "Usage of PonyPixel may result in restrictions placed on your Reddit accoun
 echo "Avoid using your main Reddit account."
 echo "If you understand the risk, press enter to proceed. Ctrl+C to cancel."
 read -r temp
-if [ "$TERMUX_VERSION" != "" ] || [ "$TERMUX_APP_PID" != "" ] ; then
+if [ "$TERMUX_VERSION" != "" ] || [ "$TERMUX_APP_PID" != "" ] || [ "$PREFIX" == "/data/data/com.termux/files/usr" ] ; then
     echo "You are using Termux. Assuming APT and installing dependencies..."
     apt install git python3 -y
     echo Going to /opt...
