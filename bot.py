@@ -739,18 +739,25 @@ if __name__ == '__main__':
             if (time.time() - last_canvas_check) > time_between_canvas_checks:# if elapsed time > time between checks:
                 updateTemplate() # do a template check
             
+            upstreamVersion = urllib.urlopen('https://CloudburstSys.github.io/place.conep.one/version.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "")
+
+            if(version != upstreamVersion):
+                # Out of date!
+                print("\a-------------------------------\nBOT IS OUT OF DATE!\nPlease repull the bot (git pull) and restart your bots.")
+                exit(3)
+
             for _ in tqdm(range(math.ceil(time_to_wait)), desc='waiting'): # fancy progress bar while waiting
                 time.sleep(1)
             
             try:
                 timestampOfPlaceAttempt = AttemptPlacement(place)
             except WebSocketConnectionClosedException:
-                print("WebSocket connection refused. Auth issue.")
+                print("\aWebSocket connection refused. Auth issue.")
                 exit(2)
             
             time_to_wait = timestampOfPlaceAttempt - time.time()
             if time_to_wait > DAY:
-                print("-------------------------------\nBOT BANNED FROM R/PLACE\nPlease generate a new account and rerun.")
+                print("\a-------------------------------\nBOT BANNED FROM R/PLACE\nPlease generate a new account and rerun.")
                 exit(1)
             
             time.sleep(5)
