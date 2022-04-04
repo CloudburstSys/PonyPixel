@@ -738,12 +738,12 @@ if __name__ == '__main__':
                 timestampOfPlaceAttempt = AttemptPlacement(place)
             except WebSocketConnectionClosedException:
                 print("\aWebSocket connection refused. Auth issue.")
-                exit(2)
+                exit(1)
             
             time_to_wait = timestampOfPlaceAttempt - time.time()
             if time_to_wait > DAY:
                 print("\a-------------------------------\nBOT BANNED FROM R/PLACE\nPlease generate a new account and rerun.")
-                exit(1)
+                exit(2)
             
             time.sleep(5)
         except KeyboardInterrupt:
