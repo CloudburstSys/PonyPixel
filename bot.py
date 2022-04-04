@@ -218,12 +218,17 @@ def updateTemplate():
         print("Error updating template")
         raise err
     
-    try:
-        submask = fetchTemplate(rPlaceTemplate['maskUrl'])# [W, H, (RGBA)]
-        maskData[:submask.shape[0], :submask.shape[1]] = submask
-    except Exception as err:
-        print_exc()
-        print("Error updating mask:\n", err)
+    # Also update mask if needed
+    maskData = np.zeros(templateData.shape, dtype=numpy.uint8)
+    if rPlaceTemplate['maskUrl'] is not None:
+        try:
+            submask = fetchTemplate(rPlaceTemplate['maskUrl'])# [W, H, (RGBA)]
+            maskData[:submask.shape[0], :submask.shape[1]] = submask
+            
+            #loadMask()
+        except Exception as err:
+            print_exc()
+            print("Error updating mask:\n", err)
 
 
 #
@@ -483,7 +488,7 @@ class Placer:
                 msg = temp["payload"]["data"]["subscribe"]
                 if msg["data"]["__typename"] == "FullFrameMessageData":
                     print("Got 1st canvas: {}".format(msg["data"]["name"]))
-                    boardimg[0] = BytesIO(requests.get(msg["data"]["name"], stream=True).content)
+                    boardimg[0] = BytesIO(urllib.urlopen(msg["data"]["name"]).read())
                     break
 
         ws.send(
