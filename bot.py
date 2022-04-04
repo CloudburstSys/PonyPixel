@@ -2,7 +2,7 @@
 
 import math
 from traceback import print_exc
-from typing import Optional, Dict, List, Union
+from typing import Optional, Dict, List, Union, Tuple
 
 import numpy
 from tqdm import tqdm
@@ -70,37 +70,72 @@ SET_PIXEL_QUERY = \
 """
 
 COLOR_MAP = {
-    "#BE0039FF": 1,
-    "#FF4500FF": 2,  # bright red
-    "#FFA800FF": 3,  # orange
-    "#FFD635FF": 4,  # yellow
-    "#FFF8B8FF": 5,
-    "#00A368FF": 6,  # darker green
-    "#00CC78FF": 7,
-    "#7EED56FF": 8,  # lighter green
-    "#00756FFF": 9,
+    "#6D001AFF":  0,
+    "#BE0039FF":  1,
+    "#FF4500FF":  2,
+    "#FFA800FF":  3,
+    "#FFD635FF":  4,
+    "#FFF8B8FF":  5,
+    "#00A368FF":  6,
+    "#00CC78FF":  7,
+    "#7EED56FF":  8,
+    "#00756FFF":  9,
     "#009EAAFF": 10,
     "#00CCC0FF": 11,
-    "#2450A4FF": 12,  # darkest blue
-    "#3690EAFF": 13,  # medium normal blue
-    "#51E9F4FF": 14,  # cyan
+    "#2450A4FF": 12,
+    "#3690EAFF": 13,
+    "#51E9F4FF": 14,
     "#493AC1FF": 15,
     "#6A5CFFFF": 16,
     "#94B3FFFF": 17,
-    "#811E9FFF": 18,  # darkest purple
-    "#B44AC0FF": 19,  # normal purple
+    "#811E9FFF": 18,
+    "#B44AC0FF": 19,
     "#E4ABFFFF": 20,
     "#DE107FFF": 21,
     "#FF3881FF": 22,
-    "#FF99AAFF": 23,  # pink
+    "#FF99AAFF": 23,
     "#6D482FFF": 24,
-    "#9C6926FF": 25,  # brown
+    "#9C6926FF": 25,
     "#FFB470FF": 26,
-    "#000000FF": 27,  # black
+    "#000000FF": 27,
     "#515252FF": 28,
-    "#898D90FF": 29,  # grey
-    "#D4D7D9FF": 30,  # light grey
-    "#FFFFFFFF": 31,  # white
+    "#898D90FF": 29,
+    "#D4D7D9FF": 30,
+    "#FFFFFFFF": 31,
+}
+COLOR_NAMES_MAP = {
+    "#6D001AFF": 'Burgundy',
+    "#BE0039FF": 'Dark Red',
+    "#FF4500FF": 'Red',
+    "#FFA800FF": 'Orange',
+    "#FFD635FF": 'Yellow',
+    "#FFF8B8FF": 'Pale Yellow',
+    "#00A368FF": 'Dark Green',
+    "#00CC78FF": 'Green',
+    "#7EED56FF": 'Light Green',
+    "#00756FFF": 'Dark Teal',
+    "#009EAAFF": 'Teal',
+    "#00CCC0FF": 'Light Teal',
+    "#2450A4FF": 'Dark Blue',
+    "#3690EAFF": 'Blue',
+    "#51E9F4FF": 'Light Blue',
+    "#493AC1FF": 'Indigo',
+    "#6A5CFFFF": 'Periwinkle',
+    "#94B3FFFF": 'Lavender',
+    "#811E9FFF": 'Dark Purple',
+    "#B44AC0FF": 'Purple',
+    "#E4ABFFFF": 'Pale Purple',
+    "#DE107FFF": 'Magenta',
+    "#FF3881FF": 'Pink',
+    "#FF99AAFF": 'Light Pink',
+    "#6D482FFF": 'Dark Brown',
+    "#9C6926FF": 'Brown',
+    "#FFB470FF": 'Biege',
+    "#000000FF": 'Black',
+    "#515252FF": 'Dark Grey',
+    "#898D90FF": 'Grey',
+    "#D4D7D9FF": 'Light Grey',
+    "#FFFFFFFF": 'White',
 }
 
 rgb_colors_array = []
@@ -115,6 +150,9 @@ def init_rgb_colors_array():
 
 
 init_rgb_colors_array()
+
+def image_to_npy(img):
+    return np.asarray(img).transpose((1, 0, 2))
 
 
 rPlaceTemplatesGithubLfs = True
@@ -163,7 +201,7 @@ def setRPlaceTemplate(templateName):
 def fetchTemplate(url):
     # return unsignedInt8Array[W, H, C] of the URL
     im = urllib.urlopen(f'{url}?t={time.time()}').read()# load raw file
-    im = np.array(Image.open(BytesIO(im)).convert("RGBA")).transpose((1, 0, 2))# raw -> intMatrix([W, H, (RGBA)])
+    im = image_to_npy(Image.open(BytesIO(im)).convert("RGBA"))# raw -> intMatrix([W, H, (RGBA)])
     assert im.dtype == 'uint8', f'got dtype {im.dtype}, expected uint8'
     assert im.shape[2] == 4, f'got {im.shape[2]} color channels, expected 4 (RGBA)'
     return im
@@ -255,7 +293,7 @@ def selectRandomPixelWeighted(diff):
     totalAvailablePixels = 0
     for coords in diff:
         (x, y) = coords
-        maskValue = maskData[x, y, 1] # brightness of mask coresponds to priority
+        maskValue = int(maskData[x, y, 1]) # brightness of mask coresponds to priority
         if maskValue == 0: continue # zero priority = ignore
         
         totalAvailablePixels += 1
@@ -296,10 +334,10 @@ def closest_color(target_rgb, rgb_colors_array_in):
     r, g, b, a = target_rgb
     color_diffs = []
     for color in rgb_colors_array_in:
-        cr, cg, cb, ca = color
-        color_diff = math.sqrt((r - cr) ** 2 + (g - cg) ** 2 + (b - cb) ** 2 + (a - ca) ** 2)
+        cr, cg, cb, _ = color
+        color_diff = math.sqrt((float(r) - cr) ** 2 + (float(g) - cg) ** 2 + (float(b) - cb) ** 2)
         color_diffs.append((color_diff, color))
-    return min(color_diffs)[1]
+    return min(color_diffs, key=lambda x: x[0])[1]
 
 def getDiff(currentData, templateData):
     assert currentData.shape == templateData.shape, f'got {currentData.shape} and {templateData.shape} for currentData and templateData shapes'
@@ -316,8 +354,7 @@ def getDiff(currentData, templateData):
                 continue
             if np.not_equal(curr_pixel[:3], temp_pixel[:3]).any():
                 diff.append([x, y])
-    print(f'Total Coverage : {len(diff) / (currentData.shape[0] * currentData.shape[1]):.1%}', len(diff), currentData.shape[0]*currentData.shape[1])
-    print(f'Total Condition: {len(diff) / (templateData[:, :, 3] != 0.0).sum():.1%}', len(diff), (templateData[:, :, 3] != 0.0).sum())
+    print(f'Total Damage: {len(diff) / (templateData[:, :, 3] != 0.0).sum():.1%}', len(diff), (templateData[:, :, 3] != 0.0).sum())
     return diff
 
 
@@ -523,9 +560,10 @@ def CanvasCoordToAbsCoord(cx: int, cy: int, canvas_id: int):
     y = cy + CANVAS_YOFFSET[canvas_id]
     return x, y
 
-def AttemptPlacement(place: Placer):
-    # Find pixels that don't match template
-    diffcords = getDiff(currentData, templateData) # list([x, y], ...)
+def AttemptPlacement(place: Placer, diffcords: Optional[List[Tuple[int, int]]] = None):
+    if diffcords is None:
+        # Find pixels that don't match template
+        diffcords = getDiff(currentData, templateData) # list([x, y], ...)
     
     if len(diffcords):# if img doesn't perfectly match template
         # Pick mismatched pixel to modify
@@ -533,12 +571,12 @@ def AttemptPlacement(place: Placer):
         
         # Send request to correct pixel that doesn't match template
         cx, cy, canvas_id = AbsCoordToCanvasCoord(x, y)
-        hex_color = rgb_to_hex(closest_color(currentData[x, y], rgb_colors_array)) # find closest colour in colour map
+        hex_color = rgb_to_hex(closest_color(templateData[x, y], rgb_colors_array)) # find closest colour in colour map
         timestampOfSafePlace = place.place_tile(int(canvas_id), cx, cy, COLOR_MAP[hex_color]) # and convert hex_color to color ID for request
         
         # add random delay after placing tile (to reduce chance of bot detection)
         timestampOfSafePlace += random.uniform(5, 30)
-        print(f"Placed Pixel '{hex_color}' at [{x}, {y}]. Can next place in {timestampOfSafePlace - time.time():.1f} seconds")
+        print(f"Placed Pixel '{COLOR_NAMES_MAP.get(hex_color, hex_color)}' at [{x}, {y}]. Can next place in {timestampOfSafePlace - time.time():.1f} seconds")
         
         return timestampOfSafePlace
     
@@ -568,7 +606,7 @@ def updateCanvasState(ids: Union[int, List[int]]):
         yoffset = CANVAS_YOFFSET[canvas_id]
         xsize   = CANVAS_XSIZE[canvas_id]
         ysize   = CANVAS_YSIZE[canvas_id]
-        canvas = np.asarray(Image.open(place.get_board(canvas_id)).convert("RGBA"))# raw -> intMatrix([W, H, (RGBA)])
+        canvas = image_to_npy(Image.open(place.get_board(canvas_id)).convert("RGBA"))# raw -> intMatrix([W, H, (RGBA)])
         currentData[xoffset:xoffset + xsize, yoffset:yoffset + ysize] = canvas
 
 
@@ -581,7 +619,6 @@ if __name__ == '__main__':
     parser.add_argument("template", nargs="?", default='mlp')
     args = parser.parse_args()
     botConfig = args
-    
     
     time_between_template_checks = 60 * 30
     time_between_canvas_checks = 15
