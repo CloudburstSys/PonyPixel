@@ -715,28 +715,17 @@ if __name__ == '__main__':
     parser.add_argument("template", nargs="?", default='mlp')
     args = parser.parse_args()
     botConfig = args
-    
-    time_between_template_checks = 60 * 30
-    time_between_canvas_checks = 15
-    
+
     place = init_webclient(botConfig)
     updateTemplateState(botConfig.template)
     
     timestampOfPlaceAttempt = 0
-    last_template_check = time.time()
-    last_canvas_check = time.time()
     time_to_wait = 0
     need_init = False
     while True:
         try:
             if need_init:
                 place = init_webclient(botConfig)
-            
-            if (time.time() - last_template_check) > time_between_template_checks:# if elapsed time > time between checks:
-                updateTemplate() # do a template check
-            
-            if (time.time() - last_canvas_check) > time_between_canvas_checks:# if elapsed time > time between checks:
-                updateTemplate() # do a template check
             
             upstreamVersion = urllib.urlopen('https://CloudburstSys.github.io/place.conep.one/version.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "")
 
@@ -749,6 +738,7 @@ if __name__ == '__main__':
                 time.sleep(1)
             
             try:
+                updateTemplate()
                 updateCanvasState([0, 1, 2, 3])
                 timestampOfPlaceAttempt = AttemptPlacement(place)
             except WebSocketConnectionClosedException:
