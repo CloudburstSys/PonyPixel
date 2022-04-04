@@ -2,7 +2,7 @@
 Pixel place bot for Brony team at r/place 2022
 
 ## How to run
-1. Install Python 3.7. Python version below 3.7 will NOT WORK. It **MUST** be Python 3.7.
+1. Install Python 3.7. Python version below 3.7 will NOT WORK. It **MUST** be Python 3.7 or above.
 2. Install Git. This is required for you to be able to update the bot.
 3. Download the bot by using the `git clone https://github.com/CloudburstSys/PonyPixel.git` command
 4. Navigate to the downloaded file using `cd PonyPixel`
