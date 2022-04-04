@@ -176,6 +176,7 @@ def addRPlaceTemplate(templateName, options):
 addRPlaceTemplate("mlp"         , {'bot': True, 'mask': True})
 addRPlaceTemplate("r-ainbowroad", {'bot': True, 'mask': True})
 addRPlaceTemplate("spain"       , {'bot': True, 'mask': True})
+addRPlaceTemplate("phoenixmc"   , {'bot': True, 'mask': True})
 
 # globals
 rPlaceTemplateName: Optional[str] = None
