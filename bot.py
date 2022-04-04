@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 import math
-from enum import Enum
+from traceback import print_exc
+from typing import Optional, Dict, List, Union
+
+import numpy
+from tqdm import tqdm
 import time
 import json
-
-import os
-import sys
 
 import requests
 from bs4 import BeautifulSoup
@@ -17,22 +18,33 @@ from websocket import create_connection
 from websocket import WebSocketConnectionClosedException
 from PIL import ImageColor
 from PIL import Image
+import numpy as np
 import random
 
-import argparse
+# Behold, the dirtiest code I ever wrote
+# This hacky hack serves as a bridge for urllib in Python 2 and Python 3
+try:
+    urllib.urlopen
+except AttributeError as err:
+    urllib.urlopen = urllib.request.urlopen
 
-parser = argparse.ArgumentParser()
-parser.add_argument("username", nargs="?")
-parser.add_argument("password", nargs="?")
-args = parser.parse_args()
-if args.username is None or args.password is None:
-  import botConfig
-else:
-  botConfig = args
+DAY = 86400
+HOUR = 3600
+VERSION = "0.4.2"
 
+CANVAS_IDS     = [   0,    1,    2,    3]
+CANVAS_XOFFSET = [   0, 1000,    0, 1000]
+CANVAS_YOFFSET = [   0,    0, 1000, 1000]
+CANVAS_XSIZE   = [1000, 1000, 1000, 1000]
+CANVAS_YSIZE   = [1000, 1000, 1000, 1000]
+CanvasIdMap = None
+
+max_x = int(max(xoffset+xsize for xoffset, xsize in zip(CANVAS_XOFFSET, CANVAS_XSIZE)))
+max_y = int(max(yoffset+ysize for yoffset, ysize in zip(CANVAS_YOFFSET, CANVAS_YSIZE)))
+currentData = np.zeros([max_x, max_y, 4], dtype=np.uint8) # should hold current state of canvas at all times
 
 SET_PIXEL_QUERY = \
-"""mutation setPixel($input: ActInput!) {
+    """mutation setPixel($input: ActInput!) {
   act(input: $input) {
     data {
       ... on BasicMessage {
@@ -57,214 +69,8 @@ SET_PIXEL_QUERY = \
 }
 """
 
-
-def rgb_to_hex(rgb):
-    return ("#%02x%02x%02x%02x" % rgb).upper()
-
-
-# function to find the closest rgb color from palette to a target rgb color
-def closest_color(target_rgb, rgb_colors_array_in):
-    r, g, b, a = target_rgb
-    color_diffs = []
-    for color in rgb_colors_array_in:
-        cr, cg, cb, ca = color
-        color_diff = math.sqrt((r - cr)**2 + (g - cg)**2 + (b - cb)**2 + (a - ca)**2)
-        color_diffs.append((color_diff, color))
-    return min(color_diffs)[1]
-
-rgb_colors_array = []
-
-class Color(Enum):
-    BLACK = 27
-    WHITE = 31
-
-
-class Placer:
-    REDDIT_URL = "https://www.reddit.com"
-    LOGIN_URL = REDDIT_URL + "/login"
-    INITIAL_HEADERS = {
-        "accept":
-        "*/*",
-        "accept-encoding":
-        "gzip, deflate, br",
-        "accept-language":
-        "en-US,en;q=0.9",
-        "content-type":
-        "application/x-www-form-urlencoded",
-        "origin":
-        REDDIT_URL,
-        "sec-ch-ua":
-        '" Not A;Brand";v="99", "Chromium";v="100", "Google Chrome";v="100"',
-        "sec-ch-ua-mobile":
-        "?0",
-        "sec-ch-ua-platform":
-        '"Windows"',
-        "sec-fetch-dest":
-        "empty",
-        "sec-fetch-mode":
-        "cors",
-        "sec-fetch-site":
-        "same-origin",
-        "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.60 Safari/537.36"
-    }
-
-    def __init__(self):
-        self.client = requests.session()
-        self.client.headers.update(self.INITIAL_HEADERS)
-
-        self.token = None
-
-    def login(self, username: str, password: str):
-        # get the csrf token
-        r = self.client.get(self.LOGIN_URL)
-        time.sleep(1)
-
-        login_get_soup = BeautifulSoup(r.content, "html.parser")
-        csrf_token = login_get_soup.find("input",
-                                         {"name": "csrf_token"})["value"]
-
-        # authenticate
-        r = self.client.post(self.LOGIN_URL,
-                             data={
-                                 "username": username,
-                                 "password": password,
-                                 "dest": self.REDDIT_URL,
-                                 "csrf_token": csrf_token
-                             })
-        time.sleep(1)
-
-        print(r.content)
-        assert r.status_code == 200
-
-        # get the new access token
-        r = self.client.get(self.REDDIT_URL)
-        data_str = BeautifulSoup(r.content, features="html5lib").find(
-            "script", {
-                "id": "data"
-            }).contents[0][len("window.__r = "):-1]
-        data = json.loads(data_str)
-        self.token = data["user"]["session"]["accessToken"]
-
-    def get_board(self, canvas):
-        print("Getting board")
-        ws = create_connection("wss://gql-realtime-2.reddit.com/query", origin="https://hot-potato.reddit.com")
-        ws.send(
-            json.dumps({
-                "type": "connection_init",
-                "payload": {
-                    "Authorization": "Bearer " + self.token
-                },
-            }))
-        ws.recv()
-        ws.send(
-            json.dumps({
-                "id": "1",
-                "type": "start",
-                "payload": {
-                    "variables": {
-                        "input": {
-                            "channel": {
-                                "teamOwner": "AFD2022",
-                                "category": "CONFIG",
-                            }
-                        }
-                    },
-                    "extensions": {},
-                    "operationName":
-                    "configuration",
-                    "query":
-                    "subscription configuration($input: SubscribeInput!) {\n  subscribe(input: $input) {\n    id\n    ... on BasicMessage {\n      data {\n        __typename\n        ... on ConfigurationMessageData {\n          colorPalette {\n            colors {\n              hex\n              index\n              __typename\n            }\n            __typename\n          }\n          canvasConfigurations {\n            index\n            dx\n            dy\n            __typename\n          }\n          canvasWidth\n          canvasHeight\n          __typename\n        }\n      }\n      __typename\n    }\n    __typename\n  }\n}\n",
-                },
-            }))
-        ws.recv()
-        ws.send(
-            json.dumps({
-                "id": "2",
-                "type": "start",
-                "payload": {
-                    "variables": {
-                        "input": {
-                            "channel": {
-                                "teamOwner": "AFD2022",
-                                "category": "CANVAS",
-                                "tag": str(canvas),
-                            }
-                        }
-                    },
-                    "extensions": {},
-                    "operationName":
-                    "replace",
-                    "query":
-                    "subscription replace($input: SubscribeInput!) {\n  subscribe(input: $input) {\n    id\n    ... on BasicMessage {\n      data {\n        __typename\n        ... on FullFrameMessageData {\n          __typename\n          name\n          timestamp\n        }\n        ... on DiffFrameMessageData {\n          __typename\n          name\n          currentTimestamp\n          previousTimestamp\n        }\n      }\n      __typename\n    }\n    __typename\n  }\n}\n",
-                },
-            }))
-
-        file = ""
-        while True:
-            temp = json.loads(ws.recv())
-            if temp["type"] == "data":
-                msg = temp["payload"]["data"]["subscribe"]
-                if msg["data"]["__typename"] == "FullFrameMessageData":
-                    file = msg["data"]["name"]
-                    break
-
-        ws.close()
-
-        boardimg = BytesIO(requests.get(file, stream=True).content)
-        print("Got image:", file)
-
-        return boardimg
-
-    def place_tile(self, canvas: int, x: int, y: int, color: int):
-        headers = self.INITIAL_HEADERS.copy()
-        headers.update({
-            "apollographql-client-name": "mona-lisa",
-            "apollographql-client-version": "0.0.1",
-            "content-type": "application/json",
-            "origin": "https://hot-potato.reddit.com",
-            "referer": "https://hot-potato.reddit.com/",
-            "sec-fetch-site": "same-site",
-            "authorization": "Bearer " + self.token
-        })
-
-        r = requests.post("https://gql-realtime-2.reddit.com/query",
-                          json={
-                              "operationName": "setPixel",
-                              "query": SET_PIXEL_QUERY,
-                              "variables": {
-                                  "input": {
-                                      "PixelMessageData": {
-                                          "canvasIndex": canvas,
-                                          "colorIndex": color,
-                                          "coordinate": {
-                                              "x": x,
-                                              "y": y
-                                          }
-                                      },
-                                      "actionName": "r/replace:set_pixel"
-                                  }
-                              }
-                          },
-                          headers=headers)
-
-        if r.json()["data"] == None:
-            try:
-              waitTime = math.floor(
-                  r.json()["errors"][0]["extensions"]["nextAvailablePixelTs"])
-              print("placing failed: rate limited")
-            except:
-              waitTime = 10000
-        else:
-            waitTime = math.floor(r.json()["data"]["act"]["data"][0]["data"]
-                                  ["nextAvailablePixelTimestamp"])
-            print("placing succeeded")
-
-        return waitTime / 1000
-
-
-color_map = {
-    "#BE0039FF": 1, 
+COLOR_MAP = {
+    "#BE0039FF": 1,
     "#FF4500FF": 2,  # bright red
     "#FFA800FF": 3,  # orange
     "#FFD635FF": 4,  # yellow
@@ -297,129 +103,528 @@ color_map = {
     "#FFFFFFFF": 31,  # white
 }
 
-def init_rgb_colors_array():
-  global rgb_colors_array
+rgb_colors_array = []
 
-  # generate array of available rgb colors we can use
-  for color_hex, color_index in color_map.items():
-    rgb_array = ImageColor.getcolor(color_hex, "RGBA")
-    rgb_colors_array.append(rgb_array)
+def init_rgb_colors_array():
+    global rgb_colors_array
     
-  print("available colors for palette (rgba): ", rgb_colors_array)
+    # generate array of available rgb colors we can use
+    for color_hex, color_index in COLOR_MAP.items():
+        rgb_array = ImageColor.getcolor(color_hex, "RGBA")
+        rgb_colors_array.append(rgb_array)
+
 
 init_rgb_colors_array()
 
-place = Placer()
 
-version = "0.4.2"
+rPlaceTemplatesGithubLfs = True
+rPlaceTemplateBaseUrl = "https://media.githubusercontent.com/media/r-ainbowroad/minimap/d/main" if rPlaceTemplatesGithubLfs else "https://raw.githubusercontent.com/r-ainbowroad/minimap/d/main"
 
-def trigger():
-  # Behold, the dirtiest code I ever wrote
-  # This hacky hack serves as a bridge for urllib in Python 2 and Python 3
-  try:
-    urllib.urlopen
-  except:
-    urllib.urlopen = urllib.request.urlopen
+def getRPlaceTemplateUrl(templateName, ttype):
+    return f'{rPlaceTemplateBaseUrl}/{templateName}/{ttype}.png'
 
-  def getData():
-    im = urllib.urlopen('https://CloudburstSys.github.io/place.conep.one/canvas.png?t={}'.format(time.time())).read()
-    img = Image.open(BytesIO(im)).convert("RGBA").load()
-		
-    new_origin = urllib.urlopen('https://CloudburstSys.github.io/place.conep.one/origin.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "").split(',')
-    origin = (int(new_origin[0]), int(new_origin[1]))
-    size = (int(new_origin[2]), int(new_origin[3]))
-    canvas = int(new_origin[4])
 
-    ver = urllib.urlopen('https://CloudburstSys.github.io/place.conep.one/version.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "")
+rPlaceTemplateNames = []
+rPlaceTemplates = {}
+def addRPlaceTemplate(templateName, options):
+    rPlaceTemplates[templateName] = {
+        'canvasUrl': getRPlaceTemplateUrl(templateName, "canvas"),
+        'botUrl'   : getRPlaceTemplateUrl(templateName, "bot" ) if options['bot' ] else None,
+        'maskUrl'  : getRPlaceTemplateUrl(templateName, "mask") if options['mask'] else None,
+    }
+    rPlaceTemplateNames.append(templateName)
 
-    print("LOCAL VERSION: {}".format(version))
-    print("UPSTREAM VERSION: {}".format(ver))
 
-    if(ver != version):
-      print("VERSION OUT OF DATE!")
-      print("PLEASE RUN 'git pull https://github.com/CloudburstSys/PonyPixel.git' TO UPDATE")
-      
-      return (None, (None, None), (None, None), None)
+addRPlaceTemplate("mlp"         , {'bot': True, 'mask': True})
+addRPlaceTemplate("r-ainbowroad", {'bot': True, 'mask': True})
+addRPlaceTemplate("spain"       , {'bot': True, 'mask': True})
 
-    return (img, origin, size, canvas)
+# globals
+rPlaceTemplateName: Optional[str] = None
+rPlaceTemplate: Optional[dict] = None
+maskData: Optional[np.ndarray] = None
+templateData: Optional[np.ndarray] = None
+rPlaceMask: Optional[np.ndarray] = None
 
-  (img, origin, size, canvas) = getData()
-  
-  if(img == None):
-    exit()
-    return
+def setRPlaceTemplate(templateName):
+    global rPlaceTemplateName
+    global rPlaceTemplate
+    template = rPlaceTemplates.get(templateName, None)
+    if template is None:
+        print("Invalid /r/place template name:", templateName)
+        print(f"Must be one of {rPlaceTemplates.keys()}")
+        return
+    
+    rPlaceTemplateName = templateName
+    rPlaceTemplate = template
 
-  (ox, oy) = origin
-  (sx, sy) = size
 
-  pix2 = Image.open(place.get_board(canvas)).convert("RGBA").load()
+# Fetch template, returns a Promise<Uint8Array>, on error returns the response object
+def fetchTemplate(url):
+    # return unsignedInt8Array[W, H, C] of the URL
+    im = urllib.urlopen(f'{url}?t={time.time()}').read()# load raw file
+    im = np.array(Image.open(BytesIO(im)).convert("RGBA")).transpose((1, 0, 2))# raw -> intMatrix([W, H, (RGBA)])
+    assert im.dtype == 'uint8', f'got dtype {im.dtype}, expected uint8'
+    assert im.shape[2] == 4, f'got {im.shape[2]} color channels, expected 4 (RGBA)'
+    return im
 
-  rows = []
-  thisRow = []
 
-  totalPixels = sx*sy
-  correctPixels = 0
-  wrongPixels = 0
+def updateTemplate():
+    global templateData
+    global maskData
+    rPlaceTemplateUrl = rPlaceTemplate['botUrl'] if rPlaceTemplate['botUrl'] is not None else rPlaceTemplate['canvasUrl']
+    
+    try:
+        templateData = fetchTemplate(rPlaceTemplateUrl)# [W, H, (RGBA)]
+    except Exception as err:
+        print("Error updating template")
+        raise err
+    
+    # Also update mask if needed
+    maskData = np.zeros(templateData.shape, dtype=numpy.uint8)
+    if rPlaceTemplate['maskUrl'] is not None:
+        try:
+            submask = fetchTemplate(rPlaceTemplate['maskUrl'])# [W, H, (RGBA)]
+            maskData[:submask.shape[0], :submask.shape[1]] = submask
+            
+            #loadMask()
+        except Exception as err:
+            print_exc()
+            print("Error updating mask:\n", err)
 
-  wrongPixelsArray = []
 
-  for i in range(sx*sy):
-    x = (i % sx) + ox
-    y = math.floor(i / sx) + oy
+#
+# Pick a pixel from a list of buckets
+#
+# The `position` argument is the position in the virtual pool to be selected.  See the
+# docs for `selectRandomPixelWeighted` for information on what this is hand how it
+# works
+#
+# @param {Map<number, [number, number][]>} buckets
+# @param {number} position
+# @return {[number, number]}
+#
+def pickFromBuckets(buckets: Dict[int, List], position):
+    # All of the buckets, sorted in order from highest priority to lowest priority
+    orderedBuckets = [*buckets.items()] # Convert map to array of tuples
+    orderedBuckets = sorted(orderedBuckets, key=lambda x: x[0]) # Order by key (priority) ASC
+    orderedBuckets = reversed(orderedBuckets) # Order by key (priority) DESC
+    orderedBuckets = [l for k, l in orderedBuckets] # Drop the priority, leaving an array of buckets
+    
+    # list[list[(x: int, y: int)]], inside each bucket is a [x, y] coordinate.
+    # Each bucket corresponds to a different prority level.
+    
+    # Select the position'th element from the buckets
+    for bucket in orderedBuckets:
+        if len(bucket) <= position:
+            position -= len(bucket)
+        else:
+            return bucket[position]
+    
+    # If for some reason this breaks, just return a random pixel from the largest bucket
+    largestBucket = orderedBuckets[orderedBuckets.index(max(len(b) for b in orderedBuckets))]
+    return random.choice(largestBucket)
 
-    (red, green, blue, alpha) = img[x-ox, y-oy]
-	
-    if(color_map[rgb_to_hex(closest_color(pix2[x, y], rgb_colors_array))] == color_map[rgb_to_hex(closest_color(img[x-ox, y-oy],rgb_colors_array))]):
-		  # Great! They're equal!
-      correctPixels += 1
-    elif(alpha == 0):
-      # Blank pixel. we ignore it
-      totalPixels = totalPixels - 1
+
+FOCUS_AREA_SIZE = 75
+#
+# Select a random pixel weighted by the mask.
+#
+# The selection algorithm works as follows:
+# - Pixels are grouped into buckets based on the mask
+# - A virtual pool of {FOCUS_AREA_SIZE} of the highest priority pixels is defined.
+#   - If the highest priority bucket contains fewer than FOCUS_AREA_SIZE pixels, the
+#     next highest bucket is pulled from, and so on until the $FOCUS_AREA_SIZE pixel
+#     threshold is met.
+# - A pixel is picked from this virtual pool without any weighting
+#
+# This algorithm avoids the collision dangers of only using one bucket, while requiring
+# no delays, and ensures that the size of the selection pool is always constant.
+#
+# Another way of looking at this:
+# - If >= 75 pixels are missing from the crystal, 100% of the bots will be working there
+# - If 50 pixels are missing from the crystal, 67% of the bots will be working there
+# - If 25 pixels are missing from the crystal, 33% of the bots will be working there
+#
+# @param {[number, number][]} diff
+# @return {[number, number]}
+#
+def selectRandomPixelWeighted(diff):
+    # Build the buckets
+    buckets = {}
+    totalAvailablePixels = 0
+    for coords in diff:
+        (x, y) = coords
+        maskValue = maskData[x, y, 1] # brightness of mask coresponds to priority
+        if maskValue == 0: continue # zero priority = ignore
+        
+        totalAvailablePixels += 1
+        bucket = buckets.get(maskValue, None)
+        if bucket is None:
+            buckets[maskValue] = [coords]
+        else:
+            bucket.append(coords)
+    
+    # Select from buckets
+    # Position represents the index in the virtual pool that we are selecting
+    position = math.floor(random.random() * min([FOCUS_AREA_SIZE, totalAvailablePixels]))
+    pixel = pickFromBuckets(buckets, position)
+    return pixel
+
+#
+# Select a random pixel.
+#
+# @param {[number, number][]} diff
+# @return {{x: number, y: number}}
+#
+def selectRandomPixel(diff):
+    if rPlaceTemplate['maskUrl'] is None or rPlaceMask is None:
+        pixel = random.choice(diff)
     else:
-      #print("Pixel at ({},{}) damaged: Expected: {}, got {}".format(x,y, color_text_map[color_map[rgb_to_hex(closest_color(img[x-ox, y-oy],rgb_colors_array))]], color_text_map[color_map[rgb_to_hex(closest_color(pix2[x, y], rgb_colors_array))]]))
-      wrongPixels += 1
-      wrongPixelsArray.append((x,y,rgb_to_hex(closest_color(img[x-ox, y-oy],rgb_colors_array))))
+        pixel = selectRandomPixelWeighted(diff)
+    
+    (x, y) = pixel
+    return x, y
 
-  print("{}% correct ({} out of {}), {} wrong pixels".format(math.floor((correctPixels/totalPixels)*100),correctPixels,totalPixels,wrongPixels))
 
-  if(len(wrongPixelsArray) == 0):
-    print("nothing to do!")
+def rgb_to_hex(rgb):
+    return ("#%02x%02x%02x%02x" % rgb).upper()
 
-    return time.time() + random.randint(5,30)
-  else:
-    (x,y,expected) = random.choice(wrongPixelsArray)	
 
-    print("Fixing pixel at ({},{}) on canvas id {}... Replacing with {}".format(x,y,canvas,expected))
-    timestampOfSafePlace = place.place_tile(int(canvas),x,y,color_map[expected]) + random.randint(5,30)
-    print("Done. Can next place at {} seconds from now".format(timestampOfSafePlace - time.time()))
+# function to find the closest rgb color from palette to a target rgb color
+def closest_color(target_rgb, rgb_colors_array_in):
+    r, g, b, a = target_rgb
+    color_diffs = []
+    for color in rgb_colors_array_in:
+        cr, cg, cb, ca = color
+        color_diff = math.sqrt((r - cr) ** 2 + (g - cg) ** 2 + (b - cb) ** 2 + (a - ca) ** 2)
+        color_diffs.append((color_diff, color))
+    return min(color_diffs)[1]
 
-    return timestampOfSafePlace
+def getDiff(currentData, templateData):
+    assert currentData.shape == templateData.shape, f'got {currentData.shape} and {templateData.shape} for currentData and templateData shapes'
+    assert currentData.shape[2] == 4, f'got {currentData.shape[2]} color channels, expected 4'
+    # [W, H, (RGBA)], [W, H, (RGBA)]
+    diff = []
+    
+    for x in range(currentData.shape[0]):
+        for y in range(currentData.shape[1]):
+            curr_pixel = currentData[x, y]# [R,G,B,A]
+            temp_pixel = templateData[x, y]# [R,G,B,A]
+            opacity = temp_pixel[3]
+            if opacity == 0.0:
+                continue
+            if np.not_equal(curr_pixel[:3], temp_pixel[:3]).any():
+                diff.append([x, y])
+    print(f'Total Coverage : {len(diff) / (currentData.shape[0] * currentData.shape[1]):.1%}', len(diff), currentData.shape[0]*currentData.shape[1])
+    print(f'Total Condition: {len(diff) / (templateData[:, :, 3] != 0.0).sum():.1%}', len(diff), (templateData[:, :, 3] != 0.0).sum())
+    return diff
 
-timestampOfPlaceAttempt = 0
 
-place.login(botConfig.username, botConfig.password)
+class Placer:
+    REDDIT_URL = "https://www.reddit.com"
+    LOGIN_URL = REDDIT_URL + "/login"
+    INITIAL_HEADERS = {
+        "accept"            :
+            "*/*",
+        "accept-encoding"   :
+            "gzip, deflate, br",
+        "accept-language"   :
+            "en-US,en;q=0.9",
+        "content-type"      :
+            "application/x-www-form-urlencoded",
+        "origin"            :
+            REDDIT_URL,
+        "sec-ch-ua"         :
+            '" Not A;Brand";v="99", "Chromium";v="100", "Google Chrome";v="100"',
+        "sec-ch-ua-mobile"  :
+            "?0",
+        "sec-ch-ua-platform":
+            '"Windows"',
+        "sec-fetch-dest"    :
+            "empty",
+        "sec-fetch-mode"    :
+            "cors",
+        "sec-fetch-site"    :
+            "same-origin",
+        "user-agent"        :
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.60 Safari/537.36"
+    }
+    
+    def __init__(self):
+        self.client = requests.session()
+        self.client.headers.update(self.INITIAL_HEADERS)
+        
+        self.token = None
+    
+    def login(self, username: str, password: str):
+        # get the csrf token
+        r = self.client.get(self.LOGIN_URL)
+        time.sleep(1)
+        
+        login_get_soup = BeautifulSoup(r.content, "html.parser")
+        csrf_token = login_get_soup.find("input",
+                                         {"name": "csrf_token"})["value"]
+        
+        # authenticate
+        r = self.client.post(self.LOGIN_URL,
+                             data={
+                                 "username"  : username,
+                                 "password"  : password,
+                                 "dest"      : self.REDDIT_URL,
+                                 "csrf_token": csrf_token
+                             })
+        time.sleep(1)
+        
+        print(r.content)
+        assert r.status_code == 200
+        
+        # get the new access token
+        r = self.client.get(self.REDDIT_URL)
+        data_str = BeautifulSoup(r.content, features="html5lib").find(
+            "script", {
+                "id": "data"
+            }).contents[0][len("window.__r = "):-1]
+        data = json.loads(data_str)
+        self.token = data["user"]["session"]["accessToken"]
+    
+    def get_board(self, canvas):
+        print("Getting board")
+        ws = create_connection("wss://gql-realtime-2.reddit.com/query", origin="https://hot-potato.reddit.com")
+        ws.send(
+            json.dumps({
+                "type"   : "connection_init",
+                "payload": {
+                    "Authorization": "Bearer " + self.token
+                },
+            }))
+        ws.recv()
+        ws.send(
+            json.dumps({
+                "id"     : "1",
+                "type"   : "start",
+                "payload": {
+                    "variables"    : {
+                        "input": {
+                            "channel": {
+                                "teamOwner": "AFD2022",
+                                "category" : "CONFIG",
+                            }
+                        }
+                    },
+                    "extensions"   : {},
+                    "operationName":
+                        "configuration",
+                    "query"        :
+                        "subscription configuration($input: SubscribeInput!) {\n  subscribe(input: $input) {\n    id\n    ... on BasicMessage {\n      data {\n        __typename\n        ... on ConfigurationMessageData {\n          colorPalette {\n            colors {\n              hex\n              index\n              __typename\n            }\n            __typename\n          }\n          canvasConfigurations {\n            index\n            dx\n            dy\n            __typename\n          }\n          canvasWidth\n          canvasHeight\n          __typename\n        }\n      }\n      __typename\n    }\n    __typename\n  }\n}\n",
+                },
+            }))
+        ws.recv()
+        ws.send(
+            json.dumps({
+                "id"     : "2",
+                "type"   : "start",
+                "payload": {
+                    "variables"    : {
+                        "input": {
+                            "channel": {
+                                "teamOwner": "AFD2022",
+                                "category" : "CANVAS",
+                                "tag"      : str(canvas),
+                            }
+                        }
+                    },
+                    "extensions"   : {},
+                    "operationName":
+                        "replace",
+                    "query"        :
+                        "subscription replace($input: SubscribeInput!) {\n  subscribe(input: $input) {\n    id\n    ... on BasicMessage {\n      data {\n        __typename\n        ... on FullFrameMessageData {\n          __typename\n          name\n          timestamp\n        }\n        ... on DiffFrameMessageData {\n          __typename\n          name\n          currentTimestamp\n          previousTimestamp\n        }\n      }\n      __typename\n    }\n    __typename\n  }\n}\n",
+                },
+            }))
+        
+        while True:
+            temp = json.loads(ws.recv())
+            if temp["type"] == "data":
+                msg = temp["payload"]["data"]["subscribe"]
+                if msg["data"]["__typename"] == "FullFrameMessageData":
+                    file = msg["data"]["name"]
+                    break
+        
+        ws.close()
+        
+        boardimg = BytesIO(requests.get(file, stream=True).content)
+        print("Got image:", file)
+        
+        return boardimg
+    
+    def place_tile(self, canvas: int, x: int, y: int, color: int):
+        headers = self.INITIAL_HEADERS.copy()
+        headers.update({
+            "apollographql-client-name"   : "mona-lisa",
+            "apollographql-client-version": "0.0.1",
+            "content-type"                : "application/json",
+            "origin"                      : "https://hot-potato.reddit.com",
+            "referer"                     : "https://hot-potato.reddit.com/",
+            "sec-fetch-site"              : "same-site",
+            "authorization"               : "Bearer " + self.token
+        })
+        
+        r = requests.post("https://gql-realtime-2.reddit.com/query",
+                          json={
+                              "operationName": "setPixel",
+                              "query"        : SET_PIXEL_QUERY,
+                              "variables"    : {
+                                  "input": {
+                                      "PixelMessageData": {
+                                          "canvasIndex": canvas,
+                                          "colorIndex" : color,
+                                          "coordinate" : {
+                                              "x": x,
+                                              "y": y
+                                          }
+                                      },
+                                      "actionName"      : "r/replace:set_pixel"
+                                  }
+                              }
+                          },
+                          headers=headers)
+        
+        if r.json()["data"] is None:
+            try:
+                waitTimems = math.floor(
+                    r.json()["errors"][0]["extensions"]["nextAvailablePixelTs"])
+                print("placing failed: rate limited")
+            except IndexError:
+                waitTimems = 10000
+        else:
+            waitTimems = math.floor(r.json()["data"]["act"]["data"][0]["data"]
+                                  ["nextAvailablePixelTimestamp"])
+            print("placing succeeded")
+        
+        return waitTimems / 1000
 
-while True:
-  if timestampOfPlaceAttempt > time.time():
-    time.sleep(5)
-    continue
 
-  try: 
-    timestampOfPlaceAttempt = trigger()
+def AbsCoordToCanvasCood(x: int, y: int):
+    global CanvasIdMap
+    if CanvasIdMap is None:
+        max_x = int(max(xoffset+xsize for xoffset, xsize in zip(CANVAS_XOFFSET, CANVAS_XSIZE)))
+        max_y = int(max(yoffset+ysize for yoffset, ysize in zip(CANVAS_YOFFSET, CANVAS_YSIZE)))
+        CanvasIdMap = np.zeros([max_x, max_y], dtype=np.uint8)
+        for canvas_id, xoffset, yoffset, xsize, ysize in zip(CANVAS_IDS, CANVAS_XOFFSET, CANVAS_YOFFSET, CANVAS_XSIZE, CANVAS_YSIZE):
+            CanvasIdMap[xoffset:xoffset + xsize, yoffset:yoffset + ysize] = canvas_id
+    
+    canvas_id = int(CanvasIdMap[x, y])
+    cx = x - CANVAS_XOFFSET[canvas_id]
+    cy = y - CANVAS_YOFFSET[canvas_id]
+    return cx, cy, canvas_id
 
-    if((timestampOfPlaceAttempt - time.time()) > 86400):
-      # Play a bell to alert the user with "\a". When using a terminal multiplexer such as tmux, the user can be alerted about the status of the bot. This is also useful when using a terminal emulator.
-      print("\a ")
-      print(" ")
-      print("-------------------------------")
-      print("BOT BANNED FROM R/PLACE")
-      print("Please generate a new account and rerun.")
-      exit(1)
-  except WebSocketConnectionClosedException:
-    print("\aWebSocket connection refused. Auth issue. Reloading...")
-    os.execv(sys.argv[0], sys.argv)
-    exit(2)
-  except Exception:
-    print("wtfff????? idk what's going on im dumb probably")
+def CanvasCoodToAbsCoord(cx: int, cy: int, canvas_id: int):
+    x = cx + CANVAS_XOFFSET[canvas_id]
+    y = cy + CANVAS_YOFFSET[canvas_id]
+    return x, y
 
-  time.sleep(5)
+def AttemptPlacement(place: Placer):
+    # Find pixels that don't match template
+    diffcords = getDiff(currentData, templateData) # list([x, y], ...)
+    
+    if len(diffcords):# if img doesn't perfectly match template
+        # Pick mismatched pixel to modify
+        x, y = selectRandomPixel(diffcords) # select random pixel?
+        
+        # Send request to correct pixel that doesn't match template
+        cx, cy, canvas_id = AbsCoordToCanvasCood(x, y)
+        hex = rgb_to_hex(closest_color(currentData[x, y], rgb_colors_array)) # find closest colour in colour map
+        timestampOfSafePlace = place.place_tile(int(canvas_id), cx, cy, COLOR_MAP[hex]) # and convert hex to color ID for request
+        
+        # add random delay after placing tile (to reduce chance of bot detection)
+        timestampOfSafePlace += random.uniform(5, 30)
+        print(f"Placed Pixel '{hex}' at [{x}, {y}]. Can next place in {timestampOfSafePlace - time.time():.1f} seconds")
+        
+        return timestampOfSafePlace
+    
+    return time.time() + random.uniform(5, 30)
+
+
+def init_webclient(botConfig):
+    place = Placer()
+    place.login(botConfig.username, botConfig.password)
+    return place
+
+
+def updateTemplateState(templateName: str):
+    setRPlaceTemplate(templateName) # set current Template to "mlp" (the default)
+    # python not async so must manually call updateTemplate() periodically
+    updateTemplate()
+
+
+def updateCanvasState(ids: Union[int, List[int]]):
+    global currentData
+    if type(ids) is int:
+        ids = [ids]
+    
+    # load current state of canvas
+    for canvas_id in ids:
+        xoffset = CANVAS_XOFFSET[canvas_id]
+        yoffset = CANVAS_YOFFSET[canvas_id]
+        xsize   = CANVAS_XSIZE[canvas_id]
+        ysize   = CANVAS_YSIZE[canvas_id]
+        canvas = np.asarray(Image.open(place.get_board(canvas_id)).convert("RGBA"))# raw -> intMatrix([W, H, (RGBA)])
+        currentData[xoffset:xoffset + xsize, yoffset:yoffset + ysize] = canvas
+
+
+if __name__ == '__main__':
+    import argparse
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("username", nargs="?")
+    parser.add_argument("password", nargs="?")
+    parser.add_argument("template", nargs="?", default='mlp')
+    args = parser.parse_args()
+    botConfig = args
+    
+    
+    time_between_template_checks = 60 * 30
+    time_between_canvas_checks = 15
+    
+    place = init_webclient(botConfig)
+    updateTemplateState(botConfig.template)
+    updateCanvasState([0, 1, 2, 3])
+    
+    timestampOfPlaceAttempt = 0
+    last_template_check = time.time()
+    last_canvas_check = time.time()
+    time_to_wait = 0
+    need_init = False
+    while True:
+        try:
+            if need_init:
+                place = init_webclient(botConfig)
+            
+            if (time.time() - last_template_check) > time_between_template_checks:# if elapsed time > time between checks:
+                updateTemplate() # do a template check
+            
+            if (time.time() - last_canvas_check) > time_between_canvas_checks:# if elapsed time > time between checks:
+                updateTemplate() # do a template check
+            
+            for _ in tqdm(range(math.ceil(time_to_wait)), desc='waiting'): # fancy progress bar while waiting
+                time.sleep(1)
+            
+            try:
+                timestampOfPlaceAttempt = AttemptPlacement(place)
+            except WebSocketConnectionClosedException:
+                print("WebSocket connection refused. Auth issue.")
+                exit()
+            
+            time_to_wait = timestampOfPlaceAttempt - time.time()
+            if time_to_wait > DAY:
+                print("-------------------------------\nBOT BANNED FROM R/PLACE\nPlease generate a new account and rerun.")
+                quit()
+            
+            time.sleep(5)
+        except KeyboardInterrupt:
+            print('KeyboardInterrupt: Exiting Application')
+            break
+        except Exception as err:
+            print_exc() # print stack trace
+            time.sleep(15)
+            need_init = True
