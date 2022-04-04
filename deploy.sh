@@ -4,7 +4,7 @@ echo "Usage of PonyPixel may result in restrictions placed on your Reddit accoun
 echo "Avoid using your main Reddit account."
 echo "If you understand the risk, press enter to proceed. Ctrl+C to cancel."
 read -r temp
-if [ "$whoami" != "root" ] && [ "$TERMUX_VERSION" == ""] ; then
+if [ "$whoami" != "root" ] && [ "$TERMUX_VERSION" == "" ] ; then
     echo "You are not running as root. System dependencies will not install."
 else
     echo "Testing APT (Debian and Ubuntu), DNF (Fedora/RHEL) and Pacman (Arch Linux)..."
@@ -37,6 +37,7 @@ if [ "$password" == "" ] ; then
 fi
 printf "\n"
 echo "Now let's begin the glory of us bronies!"
+echo "Installing requirements will take a longer time at the first time. Please be patient."
 while : ; do
     echo "Installing requirements..."
     pip install -r requirements.txt > /dev/null
