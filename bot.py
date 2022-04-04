@@ -30,7 +30,7 @@ except AttributeError as err:
 
 DAY = 86400
 HOUR = 3600
-VERSION = "0.5.1"
+VERSION = "0.5.2"
 
 CANVAS_IDS     = [   0,    1,    2,    3]
 CANVAS_XOFFSET = [   0, 1000,    0, 1000]
@@ -218,17 +218,12 @@ def updateTemplate():
         print("Error updating template")
         raise err
     
-    # Also update mask if needed
-    maskData = np.zeros(templateData.shape, dtype=numpy.uint8)
-    if rPlaceTemplate['maskUrl'] is not None:
-        try:
-            submask = fetchTemplate(rPlaceTemplate['maskUrl'])# [W, H, (RGBA)]
-            maskData[:submask.shape[0], :submask.shape[1]] = submask
-            
-            #loadMask()
-        except Exception as err:
-            print_exc()
-            print("Error updating mask:\n", err)
+    try:
+        submask = fetchTemplate(rPlaceTemplate['maskUrl'])# [W, H, (RGBA)]
+        maskData[:submask.shape[0], :submask.shape[1]] = submask
+    except Exception as err:
+        print_exc()
+        print("Error updating mask:\n", err)
 
 
 #
