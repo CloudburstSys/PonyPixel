@@ -30,7 +30,7 @@ except AttributeError as err:
 
 DAY = 86400
 HOUR = 3600
-VERSION = "0.5.0"
+VERSION = "0.5.1"
 
 CANVAS_IDS     = [   0,    1,    2,    3]
 CANVAS_XOFFSET = [   0, 1000,    0, 1000]
@@ -721,7 +721,6 @@ if __name__ == '__main__':
     
     place = init_webclient(botConfig)
     updateTemplateState(botConfig.template)
-    updateCanvasState([0, 1, 2, 3])
     
     timestampOfPlaceAttempt = 0
     last_template_check = time.time()
@@ -750,6 +749,7 @@ if __name__ == '__main__':
                 time.sleep(1)
             
             try:
+                updateCanvasState([0, 1, 2, 3])
                 timestampOfPlaceAttempt = AttemptPlacement(place)
             except WebSocketConnectionClosedException:
                 print("\aWebSocket connection refused. Auth issue.")
