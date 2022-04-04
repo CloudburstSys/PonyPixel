@@ -6,6 +6,7 @@ echo "If you understand the risk, press enter to proceed. Ctrl+C to cancel."
 read -r temp
 if [ "$TERMUX_VERSION" != "" ] || [ "$TERMUX_APP_PID" != "" ] || [ "$PREFIX" == "/data/data/com.termux/files/usr" ] ; then
     echo "You are using Termux. Assuming APT and installing dependencies..."
+    apt update
     apt install git python3 -y
     echo Going to /opt...
     mkdir -p "$PREFIX/opt"
@@ -18,6 +19,7 @@ elif [ "$(whoami)" != "root" ] ; then
 else
     echo "Testing APT (Debian/Ubuntu), DNF (Fedora/RHEL) and Pacman (Arch Linux)..."
     if [ -e "$PREFIX/bin/apt" ] ; then
+        apt update
         apt install git python3 -y
         apt install python3-pip python3-venv -y
     fi
