@@ -1,5 +1,6 @@
 # PonyPixel
 Pixel place bot for Brony team at r/place 2022. The event is now over.
+
 Thanks for those who ran PonyPixel! We succeeded. A final python script has been bundled with this final update to allow you to see the final total damage. To use it, run `python checkDamage.py`.
 
 I have a donation page at https://ko-fi.com/cloudburstsys if you wish to donate, however it is not required at all.
