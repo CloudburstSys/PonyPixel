@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# @DjMoontune on Twitter owes @GleamyD on Twitter one (1) ice cream date.
+# The above statement is here because I said I'd do it.
+# https://twitter.com/leahpone/status/1540418467555426306
+
 import math
 from traceback import print_exc
 from typing import Optional, Dict, List, Union, Tuple
