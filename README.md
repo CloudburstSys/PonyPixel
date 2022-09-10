@@ -1,4 +1,5 @@
 # ![PonyPixel Logo](https://raw.conep.one/ponypixel-logo-small.png) PonyPixel
+"These bots are truely the Orbital Friendship Canon" - LittleshyFiM, 2022
 Pixel place bot for Brony team at r/place 2022. The event is now over.
 
 Thanks for those who ran PonyPixel! We succeeded. A final python script has been bundled with this final update to allow you to see the final total damage. To use it, run `python checkDamage.py`.
@@ -24,3 +25,6 @@ Thank you soldier. Pony on.
 If the script detects that it's version is out of date it will prompt you to update. You are responsible for going through the install instructions again to update the bot.
 
 Updating of the image used as reference is done automatically as part of checking for damage.
+
+## Credits
+MinteckPony - for being there (my gf)
