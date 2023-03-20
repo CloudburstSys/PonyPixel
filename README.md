@@ -9,7 +9,7 @@ Thanks for those who ran PonyPixel! We succeeded. A final python script has been
 
 Thank you soldier. Pony on.
 
-*Note: You may see that the repository is updated occasionally. This is in preperation for a potential 2027 r/place and the first stable release of PonyPixel (we're currenly on 0.5.2 internally and we'll wanna be on 1.0.0 for the next round).*
+*Note: You may see that the repository is updated occasionally. This is in preperation for a potential 2023 r/place and the first stable release of PonyPixel (we're currenly on 0.5.2 internally and we'll wanna be on 1.0.0 for the next round).*
 
 ## How to run?
 1. Install Python 3.7. Python version below 3.7 will NOT WORK. It **MUST** be Python 3.7 or above.
