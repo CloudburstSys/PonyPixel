@@ -159,28 +159,29 @@ def image_to_npy(img):
     return np.asarray(img).transpose((1, 0, 2))
 
 
-rPlaceTemplatesGithubLfs = True
-rPlaceTemplateBaseUrl = "https://media.githubusercontent.com/media/r-ainbowroad/minimap/d/main" if rPlaceTemplatesGithubLfs else "https://raw.githubusercontent.com/r-ainbowroad/minimap/d/main"
+#rPlaceTemplatesGithubLfs = True
+rPlaceTemplateBaseUrl = "https://ponyplace.z19.web.core.windows.net" #"https://media.githubusercontent.com/media/r-ainbowroad/minimap/d/main" if rPlaceTemplatesGithubLfs else "https://raw.githubusercontent.com/r-ainbowroad/minimap/d/main"
 
-def getRPlaceTemplateUrl(templateName, ttype):
-    return f'{rPlaceTemplateBaseUrl}/{templateName}/{ttype}.png'
+def getRPlaceTemplateUrl(ttype):
+    return f'{rPlaceTemplateBaseUrl}/{ttype}.png'
 
 
 rPlaceTemplateNames = []
 rPlaceTemplates = {}
 def addRPlaceTemplate(templateName, options):
     rPlaceTemplates[templateName] = {
-        'canvasUrl': getRPlaceTemplateUrl(templateName, "canvas"),
-        'botUrl'   : getRPlaceTemplateUrl(templateName, "bot" ) if options['bot' ] else None,
-        'maskUrl'  : getRPlaceTemplateUrl(templateName, "mask") if options['mask'] else None,
+        'canvasUrl': getRPlaceTemplateUrl("canvas"),
+        'botUrl'   : getRPlaceTemplateUrl("bot" ) if options['bot' ] else None,
+        'maskUrl'  : getRPlaceTemplateUrl("mask") if options['mask'] else None,
     }
     rPlaceTemplateNames.append(templateName)
 
 
 addRPlaceTemplate("mlp"         , {'bot': True, 'mask': True})
-addRPlaceTemplate("r-ainbowroad", {'bot': True, 'mask': True})
-addRPlaceTemplate("spain"       , {'bot': True, 'mask': True})
-addRPlaceTemplate("phoenixmc"   , {'bot': True, 'mask': True})
+#addRPlaceTemplate("r-ainbowroad", {'bot': True, 'mask': True})
+#addRPlaceTemplate("spain"       , {'bot': True, 'mask': True})
+#addRPlaceTemplate("phoenixmc"   , {'bot': True, 'mask': True})
+
 
 # globals
 rPlaceTemplateName: Optional[str] = None
@@ -362,6 +363,11 @@ def getDiff(currentData, templateData):
     print(f'Total Damage: {len(diff) / (templateData[:, :, 3] != 0.0).sum():.1%}', len(diff), (templateData[:, :, 3] != 0.0).sum())
     return diff
 
+class CLIBotConfig:
+    username = None
+    password = None
+    session_token = None
+    template = "mlp"
 
 class Placer:
     REDDIT_URL = "https://www.reddit.com"
@@ -429,16 +435,22 @@ class Placer:
             }).contents[0][len("window.__r = "):-1]
         data = json.loads(data_str)
         self.token = data["user"]["session"]["accessToken"]
+
+    def login_token(self, session_token: str):
+        print(session_token)
+        self.token = session_token
     
     def get_board(self):
         print("Getting board(s)")
         boardimg = [None, None, None, None]
-        ws = create_connection("wss://gql-realtime-2.reddit.com/query", origin="https://hot-potato.reddit.com")
+        #ws = create_connection("wss://gql-realtime-2.reddit.com/query", origin="https://hot-potato.reddit.com")
+        ws = create_connection("wss://place.equestria.dev/query", origin="https://place.equestria.dev")
         ws.send(
             json.dumps({
                 "type"   : "connection_init",
                 "payload": {
-                    "Authorization": "Bearer " + self.token
+                    #"Authorization": "Bearer " + self.token
+                    "Authorization": self.token
                 },
             }))
         ws.recv()
@@ -492,7 +504,8 @@ class Placer:
             if temp["type"] == "data":
                 msg = temp["payload"]["data"]["subscribe"]
                 if msg["data"]["__typename"] == "FullFrameMessageData":
-                    print("Got 1st canvas: {}".format(msg["data"]["name"]))
+                    #print("Got 1st canvas: {}".format(msg["data"]["name"]))
+                    print("Got 1st canvas")
                     boardimg[0] = BytesIO(urllib.urlopen(msg["data"]["name"]).read())
                     break
 
@@ -523,8 +536,9 @@ class Placer:
             if temp["type"] == "data":
                 msg = temp["payload"]["data"]["subscribe"]
                 if msg["data"]["__typename"] == "FullFrameMessageData":
-                    print("Got 2nd canvas: {}".format(msg["data"]["name"]))
-                    boardimg[1] = BytesIO(requests.get(msg["data"]["name"], stream=True).content)
+                    #print("Got 2nd canvas: {}".format(msg["data"]["name"]))
+                    print("Got 2nd canvas")
+                    boardimg[1] = BytesIO(urllib.urlopen(msg["data"]["name"]).read())
                     break
 
         ws.send(
@@ -554,8 +568,9 @@ class Placer:
             if temp["type"] == "data":
                 msg = temp["payload"]["data"]["subscribe"]
                 if msg["data"]["__typename"] == "FullFrameMessageData":
-                    print("Got 3rd canvas: {}".format(msg["data"]["name"]))
-                    boardimg[2] = BytesIO(requests.get(msg["data"]["name"], stream=True).content)
+                    #print("Got 3rd canvas: {}".format(msg["data"]["name"]))
+                    print("Got 3rd canvas")
+                    boardimg[2] = BytesIO(urllib.urlopen(msg["data"]["name"]).read())
                     break
 
         ws.send(
@@ -585,8 +600,9 @@ class Placer:
             if temp["type"] == "data":
                 msg = temp["payload"]["data"]["subscribe"]
                 if msg["data"]["__typename"] == "FullFrameMessageData":
-                    print("Got 4th canvas: {}".format(msg["data"]["name"]))
-                    boardimg[3] = BytesIO(requests.get(msg["data"]["name"], stream=True).content)
+                    #print("Got 4th canvas: {}".format(msg["data"]["name"]))
+                    print("Got 4th canvas")
+                    boardimg[3] = BytesIO(urllib.urlopen(msg["data"]["name"]).read())
                     break
         
         ws.close()
@@ -599,13 +615,16 @@ class Placer:
             "apollographql-client-name"   : "mona-lisa",
             "apollographql-client-version": "0.0.1",
             "content-type"                : "application/json",
-            "origin"                      : "https://hot-potato.reddit.com",
-            "referer"                     : "https://hot-potato.reddit.com/",
+            #"origin"                      : "https://hot-potato.reddit.com",
+            #"referer"                     : "https://hot-potato.reddit.com/",
+            "origin"                      : "https://place.equestria.dev",
+            "referer"                     : "https://place.equestria.dev/",
             "sec-fetch-site"              : "same-site",
-            "authorization"               : "Bearer " + self.token
+            #"authorization"               : "Bearer " + self.token
+            "authorization"               : self.token
         })
         
-        r = requests.post("https://gql-realtime-2.reddit.com/query",
+        r = requests.post("https://place.equestria.dev/query", #"https://gql-realtime-2.reddit.com/query",
                           json={
                               "operationName": "setPixel",
                               "query"        : SET_PIXEL_QUERY,
@@ -674,7 +693,8 @@ def AttemptPlacement(place: Placer, diffcords: Optional[List[Tuple[int, int]]] =
         timestampOfSafePlace = place.place_tile(int(canvas_id), cx, cy, COLOR_MAP[hex_color]) # and convert hex_color to color ID for request
         
         # add random delay after placing tile (to reduce chance of bot detection)
-        timestampOfSafePlace += random.uniform(5, 30)
+        #timestampOfSafePlace += random.uniform(5, 30)
+        timestampOfSafePlace += random.uniform(0.1,1)
         print(f"Placed Pixel '{COLOR_NAMES_MAP.get(hex_color, hex_color)}' at [{x}, {y}]. Can next place in {timestampOfSafePlace - time.time():.1f} seconds")
         
         return timestampOfSafePlace
@@ -684,7 +704,11 @@ def AttemptPlacement(place: Placer, diffcords: Optional[List[Tuple[int, int]]] =
 
 def init_webclient(botConfig):
     place = Placer()
-    place.login(botConfig.username, botConfig.password)
+    if botConfig.username is not None:
+        place.login(botConfig.username, botConfig.password)
+    else:
+        place.login_token(botConfig.session_token)
+
     return place
 
 
@@ -715,11 +739,25 @@ if __name__ == '__main__':
     import argparse
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("username", nargs="?")
-    parser.add_argument("password", nargs="?")
-    parser.add_argument("template", nargs="?", default='mlp')
+    parser.add_argument("-p", "--plain", nargs=2)
+    parser.add_argument("-t", "--token", nargs=1)
+    parser.add_argument("--template", nargs="?", default='mlp')
     args = parser.parse_args()
-    botConfig = args
+
+    cliBotConfig = CLIBotConfig()
+
+    if args.plain is not None:
+        cliBotConfig.username = args.plain[0]
+        cliBotConfig.password = args.plain[1]
+    elif args.token is not None:
+        cliBotConfig.session_token = args.token[0]
+    else:
+        print("\a-------------------------------\nNO AUTHENTICATION CREDENTIALS PROVIDED.\nPlease provide login credentials.")
+        exit(1)
+
+    cliBotConfig.template = args.template
+
+    botConfig = cliBotConfig
 
     place = init_webclient(botConfig)
     updateTemplateState(botConfig.template)
@@ -732,13 +770,13 @@ if __name__ == '__main__':
             if need_init:
                 place = init_webclient(botConfig)
             
-            upstreamVersion = urllib.urlopen('https://CloudburstSys.github.io/place.conep.one/version.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "")
+            #upstreamVersion = urllib.urlopen('https://CloudburstSys.github.io/place.conep.one/version.txt?t={}'.format(time.time())).read().decode("utf-8").replace("\n", "")
 
-            if(VERSION != upstreamVersion):
+            #if(VERSION != upstreamVersion):
                 # Out of date!
-                print("-------------------------------\nHello. Thanks for running our MLP r/place Python bots (PonyPixel).\nThese bots are now non-functional as r/place is over.\nWe succeeded. You can run `python checkDamage.py` to see the final damage levels.\nI recommend uninstalling PonyPixel now as it serves no purpose...\nUnless you wish to deconstruct it and learn Python.\nI have a donation link at https://ko-fi.com/cloudburstsys if you want to donate to me, however it is not required\nThank you soldier. Pony on.")
-                print("\a-------------------------------\nBOT IS OUT OF DATE!\nPlease repull the bot (git pull) and restart your bots.")
-                exit(3)
+            #    print("-------------------------------\nHello. Thanks for running our MLP r/place Python bots (PonyPixel).\nThese bots are now non-functional as r/place is over.\nWe succeeded. You can run `python checkDamage.py` to see the final damage levels.\nI recommend uninstalling PonyPixel now as it serves no purpose...\nUnless you wish to deconstruct it and learn Python.\nI have a donation link at https://ko-fi.com/cloudburstsys if you want to donate to me, however it is not required\nThank you soldier. Pony on.")
+            #    print("\a-------------------------------\nBOT IS OUT OF DATE!\nPlease repull the bot (git pull) and restart your bots.")
+            #    exit(3)
 
             for _ in tqdm(range(math.ceil(time_to_wait)), desc='waiting'): # fancy progress bar while waiting
                 time.sleep(1)
